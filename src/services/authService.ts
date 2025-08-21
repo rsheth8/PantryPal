@@ -228,8 +228,8 @@ class AuthService {
       name: authUser.name,
       email: authUser.email,
       avatar: authUser.avatar,
-      createdAt: authUser.createdAt,
-      lastActive: authUser.lastLogin,
+      created_at: authUser.createdAt,
+      last_active: authUser.lastLogin,
     };
   }
 }

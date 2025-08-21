@@ -145,6 +145,9 @@ export const gradients = {
   garden: ['#22C55E', '#14B8A6'], // Fresh garden
   sunset: ['#F59E0B', '#F97316'], // Golden hour
   twilight: ['#A855F7', '#EC4899'], // Evening sky
+  ocean: ['#3B82F6', '#1D4ED8'], // Deep ocean
+  dawn: ['#FEF3C7', '#FDE68A'], // Morning light
+  citrus: ['#F59E0B', '#D97706'], // Citrus burst
 
   // Functional Gradients
   success: ['#22C55E', '#16A34A'],

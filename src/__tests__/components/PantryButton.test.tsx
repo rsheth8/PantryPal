@@ -14,7 +14,7 @@ describe('PantryButton', () => {
       <PantryButton title='Test Button' onPress={mockOnPress} />
     );
 
-    expect(getByText('Test Button')).toBeInTheDocument();
+    expect(getByText('Test Button')).toBeTruthy();
   });
 
   it('calls onPress when pressed', () => {
@@ -31,7 +31,7 @@ describe('PantryButton', () => {
       <PantryButton title='Primary' onPress={mockOnPress} variant='primary' />
     );
 
-    expect(getByText('Primary')).toBeInTheDocument();
+    expect(getByText('Primary')).toBeTruthy();
 
     rerender(
       <PantryButton
@@ -41,7 +41,7 @@ describe('PantryButton', () => {
       />
     );
 
-    expect(getByText('Secondary')).toBeInTheDocument();
+    expect(getByText('Secondary')).toBeTruthy();
   });
 
   it('renders with subtitle when provided', () => {
@@ -53,8 +53,8 @@ describe('PantryButton', () => {
       />
     );
 
-    expect(getByText('Main Title')).toBeInTheDocument();
-    expect(getByText('Subtitle text')).toBeInTheDocument();
+    expect(getByText('Main Title')).toBeTruthy();
+    expect(getByText('Subtitle text')).toBeTruthy();
   });
 
   it('renders with icon when provided', () => {
@@ -62,8 +62,8 @@ describe('PantryButton', () => {
       <PantryButton title='Icon Button' icon='🍎' onPress={mockOnPress} />
     );
 
-    expect(getByText('Icon Button')).toBeInTheDocument();
-    expect(getByText('🍎')).toBeInTheDocument();
+    expect(getByText('Icon Button')).toBeTruthy();
+    expect(getByText('🍎')).toBeTruthy();
   });
 
   it('applies disabled state correctly', () => {
@@ -82,10 +82,10 @@ describe('PantryButton', () => {
       <PantryButton title='Small' onPress={mockOnPress} size='sm' />
     );
 
-    expect(getByText('Small')).toBeInTheDocument();
+    expect(getByText('Small')).toBeTruthy();
 
     rerender(<PantryButton title='Large' onPress={mockOnPress} size='lg' />);
 
-    expect(getByText('Large')).toBeInTheDocument();
+    expect(getByText('Large')).toBeTruthy();
   });
 });

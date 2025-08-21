@@ -111,9 +111,9 @@ export default function MealPlanningScreen() {
         includeDinner: planningOptions.includeDinner,
         includeSnacks: planningOptions.includeSnacks,
         servingsPerMeal: planningOptions.servingsPerMeal,
-        maxPrepTime: planningOptions.maxPrepTime,
-        maxCookTime: planningOptions.maxCookTime,
-        exploreNewRecipes: planningOptions.exploreNewRecipes,
+        maxPrepTime: planningOptions.maxPrepTime || 30,
+        maxCookTime: planningOptions.maxCookTime || 60,
+        exploreNewRecipes: planningOptions.exploreNewRecipes || true,
         dietaryPreferences: dietaryPreferences,
       };
 
@@ -173,7 +173,7 @@ export default function MealPlanningScreen() {
     }
 
     // Test the filtering logic directly
-    const { enhancedMealPlanningService } = await import(
+    const { enhancedMealPlanningService } = require(
       '../../services/enhancedMealPlanningService'
     );
 
@@ -531,10 +531,10 @@ export default function MealPlanningScreen() {
           animationType='slide'
           presentationStyle='pageSheet'
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Dietary Preferences</Text>
-              <Text style={styles.modalPlaceholder}>
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Dietary Preferences</Text>
+              <Text style={styles.subtitle}>
                 Enhanced preferences modal coming soon!
               </Text>
               <TouchableOpacity

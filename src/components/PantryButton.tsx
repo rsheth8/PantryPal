@@ -115,7 +115,7 @@ export default function PantryButton({
       },
     };
 
-    const widthStyle = fullWidth ? { width: '100%' } : {};
+    const widthStyle = fullWidth ? { width: '100%' as const } : {};
 
     return {
       ...baseStyle,

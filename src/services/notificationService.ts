@@ -9,6 +9,7 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldShowAlert: true,
   }),
 });
 

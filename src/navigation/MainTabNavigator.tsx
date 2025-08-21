@@ -11,7 +11,11 @@ import { Text } from 'react-native';
 
 const Tab = createBottomTabNavigator();
 
-export default function MainTabNavigator() {
+interface MainTabNavigatorProps {
+  onSignOut?: () => void;
+}
+
+export default function MainTabNavigator({ onSignOut }: MainTabNavigatorProps) {
   return (
     <Tab.Navigator
       screenOptions={{

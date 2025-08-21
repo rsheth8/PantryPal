@@ -21,7 +21,12 @@ interface PantryHeaderProps {
     | 'warm'
     | 'berry'
     | 'sunrise'
-    | 'garden';
+    | 'garden'
+    | 'sunset'
+    | 'twilight'
+    | 'ocean'
+    | 'dawn'
+    | 'citrus';
   showBackButton?: boolean;
   onBackPress?: () => void;
   rightAction?: {

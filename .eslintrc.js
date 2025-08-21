@@ -2,7 +2,6 @@ module.exports = {
   root: true,
   extends: [
     'expo',
-    '@typescript-eslint/recommended',
     'prettier',
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',

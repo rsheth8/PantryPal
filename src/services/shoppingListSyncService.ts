@@ -249,6 +249,8 @@ class ShoppingListSyncService {
         price: 0,
         isShared: true,
         isCompleted: false,
+        createdAt: new Date().toISOString(),
+        addedBy: 'current-user', // This should be passed from the calling function
       });
     });
   }

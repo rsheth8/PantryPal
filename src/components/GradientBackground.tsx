@@ -38,7 +38,7 @@ export default function GradientBackground({
 
   return (
     <LinearGradient
-      colors={gradientColors}
+      colors={gradientColors as [string, string, ...string[]]}
       start={start}
       end={end}
       style={style}

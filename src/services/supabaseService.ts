@@ -130,8 +130,8 @@ class SupabaseService {
         const devUser = getCurrentDevUser();
         return {
           ...devUser,
-          createdAt: new Date().toISOString(),
-          lastActive: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          last_active: new Date().toISOString(),
           householdId: undefined,
         };
       }
@@ -633,8 +633,8 @@ class SupabaseService {
       email: supabaseUser.email,
       avatar: supabaseUser.avatar,
       householdId: supabaseUser.household_id,
-      createdAt: supabaseUser.created_at,
-      lastActive: supabaseUser.last_active,
+      created_at: supabaseUser.created_at,
+      last_active: supabaseUser.last_active,
     };
   }
 
@@ -645,14 +645,15 @@ class SupabaseService {
       id: supabaseHousehold.id,
       name: supabaseHousehold.name,
       code: supabaseHousehold.code,
-      ownerId: supabaseHousehold.owner_id,
+      owner_id: supabaseHousehold.owner_id,
       members: supabaseHousehold.members,
-      createdAt: supabaseHousehold.created_at,
+      created_at: supabaseHousehold.created_at,
       settings: {
+        allow_private_items: supabaseHousehold.settings.allow_private_items,
         allowPrivateItems: supabaseHousehold.settings.allow_private_items,
-        requireApprovalForShared:
+        require_approval_for_shared:
           supabaseHousehold.settings.require_approval_for_shared,
-        defaultItemVisibility:
+        default_item_visibility:
           supabaseHousehold.settings.default_item_visibility,
       },
     };

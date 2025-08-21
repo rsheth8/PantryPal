@@ -7,7 +7,7 @@ interface PantryCardProps {
   variant?: 'default' | 'fresh' | 'warm' | 'elevated' | 'outlined';
   style?: ViewStyle;
   padding?: 'sm' | 'md' | 'lg' | 'xl';
-  margin?: 'sm' | 'md' | 'lg' | 'xl';
+  margin?: 'sm' | 'md' | 'lg' | 'xl' | 'none';
 }
 
 export default function PantryCard({
@@ -21,7 +21,7 @@ export default function PantryCard({
     const baseStyle: ViewStyle = {
       borderRadius: borderRadius.card,
       padding: spacing[padding],
-      marginBottom: spacing[margin],
+      marginBottom: margin === 'none' ? 0 : spacing[margin],
     };
 
     switch (variant) {

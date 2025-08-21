@@ -4,8 +4,11 @@ export interface User {
   email: string;
   avatar?: string;
   household_id?: string; // Database column name
+  householdId?: string; // Frontend property name
   created_at: string; // Database column name
+  createdAt?: string; // Frontend property name
   last_active: string; // Database column name
+  lastActive?: string; // Frontend property name
 }
 
 export interface Household {
@@ -17,6 +20,7 @@ export interface Household {
   created_at: string; // Database column name
   settings: {
     allow_private_items: boolean; // Database JSONB key
+    allowPrivateItems?: boolean; // Frontend property name
     require_approval_for_shared: boolean; // Database JSONB key
     default_item_visibility: 'shared' | 'private'; // Database JSONB key
   };
@@ -49,6 +53,7 @@ export interface Recipe {
   cookTime?: number;
   servings?: number;
   image?: string;
+  imageUrl?: string;
   canCookNow: boolean;
   missingIngredients: string[];
   tags: string[];
@@ -56,6 +61,7 @@ export interface Recipe {
   householdId?: string; // null for private recipes
   isShared: boolean;
   createdAt: string;
+  updatedAt?: string;
 
   // Advanced features
   nutrition?: {
@@ -107,6 +113,7 @@ export interface ShoppingListItem {
   notes?: string;
   price?: number;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface UserPreferences {
@@ -187,7 +194,7 @@ export interface DietaryPreferences {
 
   // FLEXIBLE - Can be relaxed
   cuisines: string[]; // ['italian', 'mexican', 'asian', 'mediterranean', 'indian', 'american']
-  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'any';
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'easy' | 'medium' | 'hard' | 'any';
   maxPrepTime?: number; // in minutes
   maxCookTime?: number; // in minutes
 
@@ -200,6 +207,10 @@ export interface DietaryPreferences {
     maxFiber?: number; // grams
     maxSugar?: number; // grams
     maxSodium?: number; // mg
+    maxCalories?: number; // For meal planning
+    minProtein?: number; // For meal planning
+    maxCarbs?: number; // For meal planning
+    maxFat?: number; // For meal planning
   };
 
   // Lifestyle Preferences
