@@ -575,14 +575,9 @@ export default function EnhancedSearchScreen() {
               </Text>
             </View>
             
-            <FlatList
-              data={searchResults}
-              renderItem={renderRecipeCard}
-              keyExtractor={item => item.id}
-              showsVerticalScrollIndicator={false}
-              scrollEnabled={true}
-              contentContainerStyle={styles.listContent}
-            />
+            <View style={styles.resultsList}>
+              {searchResults.map((item) => renderRecipeCard({ item }))}
+            </View>
           </View>
         ) : searchQuery && !isSearching ? (
           <PantryCard variant="outlined" padding="xl">
@@ -866,5 +861,8 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: spacing.xl,
+  },
+  resultsList: {
+    gap: spacing.sm,
   },
 });

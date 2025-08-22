@@ -313,13 +313,9 @@ export default function RecipesScreen() {
         {/* Recipes List */}
         <View style={styles.recipesContainer}>
           {filteredRecipes.length > 0 ? (
-            <FlatList
-              data={filteredRecipes}
-              renderItem={renderRecipeCard}
-              keyExtractor={item => item.id}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.listContent}
-            />
+            <View style={styles.recipesList}>
+              {filteredRecipes.map((item) => renderRecipeCard({ item }))}
+            </View>
           ) : (
             <PantryCard variant='outlined' padding='xl'>
               <View style={styles.emptyState}>
@@ -454,6 +450,9 @@ const styles = StyleSheet.create({
   recipesContainer: {
     flex: 1,
     padding: spacing.md,
+  },
+  recipesList: {
+    gap: spacing.sm,
   },
   listContent: {
     paddingBottom: spacing.xl,
