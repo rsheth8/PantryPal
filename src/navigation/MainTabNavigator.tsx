@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors, typography, shadows } from '../utils/designSystem';
 import DashboardScreen from '../features/dashboard/DashboardScreen';
 import PantryScreen from '../features/pantry/PantryScreen';
-import RecipesScreen from '../features/recipes/RecipesScreen';
+import RecipesNavigator from './RecipesNavigator';
 import ShoppingListScreen from '../features/shoppingList/ShoppingListScreen';
 import ScannerScreen from '../features/scanner/ScannerScreen';
 import SettingsScreen from '../features/settings/SettingsScreen';
@@ -66,7 +66,7 @@ export default function MainTabNavigator({ onSignOut }: MainTabNavigatorProps) {
       />
       <Tab.Screen
         name='Recipes'
-        component={RecipesScreen}
+        component={RecipesNavigator}
         options={{
           tabBarLabel: 'Recipes',
           tabBarIcon: ({ color, size }) => (

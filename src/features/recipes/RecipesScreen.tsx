@@ -44,13 +44,11 @@ export default function RecipesScreen() {
   };
 
   const handleAIChef = () => {
-    // TODO: Navigate to AI Chef screen
-    Alert.alert('AI Chef', 'AI Chef feature coming soon!');
+    navigation.navigate('AIChef' as never);
   };
 
   const handlePreferences = () => {
-    // TODO: Navigate to preferences screen
-    Alert.alert('Preferences', 'Preferences feature coming soon!');
+    navigation.navigate('Preferences' as never);
   };
 
   const handleFilterChange = (filter: 'all' | 'canCook' | 'favorites') => {
