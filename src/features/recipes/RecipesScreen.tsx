@@ -45,6 +45,10 @@ export default function RecipesScreen() {
     setShowDiscoveryModal(true);
   };
 
+  const handleEnhancedSearch = () => {
+    navigation.navigate('EnhancedSearch' as never);
+  };
+
   const handleAIChef = () => {
     navigation.navigate('AIChef' as never);
   };
@@ -57,12 +61,24 @@ export default function RecipesScreen() {
     setSelectedFilter(filter);
   };
 
-  // Filter recipes based on search and selected filter
+  // Enhanced filtering with better search capabilities
   const filteredRecipes = recipes.filter(recipe => {
+    const query = searchQuery.toLowerCase();
+    
+    // Enhanced search across multiple fields
     const matchesSearch =
-      recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      recipe.title.toLowerCase().includes(query) ||
+      recipe.ingredients.some((ingredient: string) =>
+        ingredient.toLowerCase().includes(query)
+      ) ||
       recipe.tags.some((tag: string) =>
-        tag.toLowerCase().includes(searchQuery.toLowerCase())
+        tag.toLowerCase().includes(query)
+      ) ||
+      recipe.cuisines?.some((cuisine: string) =>
+        cuisine.toLowerCase().includes(query)
+      ) ||
+      recipe.diets?.some((diet: string) =>
+        diet.toLowerCase().includes(query)
       );
 
     switch (selectedFilter) {
@@ -73,6 +89,11 @@ export default function RecipesScreen() {
       default:
         return matchesSearch;
     }
+  }).sort((a, b) => {
+    // Sort by relevance: can cook now first, then by rating
+    if (a.canCookNow && !b.canCookNow) return -1;
+    if (!a.canCookNow && b.canCookNow) return 1;
+    return (b.rating || 0) - (a.rating || 0);
   });
 
   const renderRecipeCard = ({ item }: { item: any }) => (
@@ -160,10 +181,16 @@ export default function RecipesScreen() {
           <View style={styles.searchContainer}>
             <TextInput
               style={styles.searchInput}
-              placeholder='Search recipes, ingredients, or tags...'
+              placeholder='Search recipes, ingredients, cuisines...'
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor={colors.neutral[400]}
+            />
+            <PantryButton
+              title='🔍 Enhanced'
+              onPress={handleEnhancedSearch}
+              variant='primary'
+              size='sm'
             />
             <PantryButton
               title='Discover'
@@ -172,6 +199,24 @@ export default function RecipesScreen() {
               size='sm'
             />
           </View>
+          
+          {/* Quick Search Suggestions */}
+          {!searchQuery && (
+            <View style={styles.quickSuggestions}>
+              <Text style={styles.suggestionsTitle}>Quick Search:</Text>
+              <View style={styles.suggestionChips}>
+                {['Quick', 'Vegetarian', 'Italian', 'Healthy', 'Dinner'].map((suggestion) => (
+                  <TouchableOpacity
+                    key={suggestion}
+                    style={styles.suggestionChip}
+                    onPress={() => setSearchQuery(suggestion)}
+                  >
+                    <Text style={styles.suggestionChipText}>{suggestion}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
         </PantryCard>
 
         {/* AI Chef and Preferences */}
@@ -525,5 +570,32 @@ const styles = StyleSheet.create({
   },
   actionButtonsContainer: {
     gap: spacing.sm,
+  },
+  quickSuggestions: {
+    marginTop: spacing.md,
+  },
+  suggestionsTitle: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+    marginBottom: spacing.sm,
+    fontWeight: '600',
+  },
+  suggestionChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  suggestionChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.pill,
+    backgroundColor: colors.primary[100],
+    borderWidth: 1,
+    borderColor: colors.primary[200],
+  },
+  suggestionChipText: {
+    ...typography.bodySmall,
+    color: colors.primary[700],
+    fontWeight: '500',
   },
 });
