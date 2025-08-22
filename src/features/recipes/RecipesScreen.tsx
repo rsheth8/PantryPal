@@ -43,6 +43,16 @@ export default function RecipesScreen() {
     setShowDiscoveryModal(true);
   };
 
+  const handleAIChef = () => {
+    // TODO: Navigate to AI Chef screen
+    Alert.alert('AI Chef', 'AI Chef feature coming soon!');
+  };
+
+  const handlePreferences = () => {
+    // TODO: Navigate to preferences screen
+    Alert.alert('Preferences', 'Preferences feature coming soon!');
+  };
+
   const handleFilterChange = (filter: 'all' | 'canCook' | 'favorites') => {
     setSelectedFilter(filter);
   };
@@ -160,6 +170,29 @@ export default function RecipesScreen() {
               onPress={handleRecipeDiscovery}
               variant='secondary'
               size='sm'
+            />
+          </View>
+        </PantryCard>
+
+        {/* AI Chef and Preferences */}
+        <PantryCard variant='elevated' padding='md'>
+          <Text style={styles.sectionTitle}>🤖 AI Chef & Preferences</Text>
+          <View style={styles.actionButtonsContainer}>
+            <PantryButton
+              title='🧠 AI Chef'
+              subtitle='Get personalized recipe suggestions'
+              onPress={handleAIChef}
+              variant='primary'
+              size='md'
+              fullWidth
+            />
+            <PantryButton
+              title='⚙️ Preferences'
+              subtitle='Set your dietary and cooking preferences'
+              onPress={handlePreferences}
+              variant='outline'
+              size='md'
+              fullWidth
             />
           </View>
         </PantryCard>
@@ -489,5 +522,8 @@ const styles = StyleSheet.create({
     color: colors.neutral[600],
     textAlign: 'center',
     marginBottom: spacing.lg,
+  },
+  actionButtonsContainer: {
+    gap: spacing.sm,
   },
 });

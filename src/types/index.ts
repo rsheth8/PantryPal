@@ -117,14 +117,82 @@ export interface ShoppingListItem {
 }
 
 export interface UserPreferences {
-  lowStockThreshold: number;
-  expirationReminderDays: number;
-  defaultItemVisibility: 'shared' | 'private';
-  notifications: {
-    expirationReminders: boolean;
-    lowStockAlerts: boolean;
-    householdUpdates: boolean;
+  id: string;
+  userId: string;
+  
+  // Dietary Preferences
+  dietaryRestrictions: string[];
+  allergies: string[];
+  preferredCuisines: string[];
+  dislikedIngredients: string[];
+  
+  // Cooking Preferences
+  cookingSkill: 'beginner' | 'intermediate' | 'advanced';
+  preferredCookingTime: 'quick' | 'medium' | 'slow';
+  preferredServings: number;
+  
+  // Taste Preferences
+  spiceTolerance: 'mild' | 'medium' | 'hot';
+  preferredFlavors: string[]; // e.g., ['sweet', 'savory', 'spicy', 'herbaceous']
+  
+  // Health Goals
+  healthGoals: string[]; // e.g., ['weight_loss', 'muscle_gain', 'heart_healthy', 'low_carb']
+  calorieTarget?: number;
+  macroPreferences?: {
+    protein: number; // percentage
+    carbs: number;
+    fat: number;
   };
+  
+  // Recipe Preferences
+  preferredRecipeTypes: string[]; // e.g., ['breakfast', 'lunch', 'dinner', 'snacks', 'desserts']
+  cookingEquipment: string[]; // e.g., ['oven', 'stovetop', 'slow_cooker', 'air_fryer']
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecipeRecommendation {
+  id: string;
+  recipeId: string;
+  userId: string;
+  score: number; // 0-100, how well it matches preferences
+  reasons: string[]; // why this recipe was recommended
+  pantryMatch: number; // 0-100, how many ingredients they have
+  missingIngredients: string[];
+  createdAt: string;
+}
+
+export interface AIRecipeRequest {
+  prompt: string;
+  context: {
+    pantryItems: GroceryItem[];
+    userPreferences: UserPreferences;
+    availableTime?: number; // minutes
+    mood?: string; // e.g., 'comfort', 'energetic', 'relaxed'
+    occasion?: string; // e.g., 'weeknight', 'weekend', 'special'
+  };
+}
+
+export interface AIRecipeSuggestion {
+  id: string;
+  title: string;
+  description: string;
+  ingredients: string[];
+  instructions: string[];
+  estimatedTime: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  cuisine: string;
+  tags: string[];
+  nutritionInfo?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
+  pantryUtilization: number; // percentage of ingredients from pantry
+  confidence: number; // 0-100, how confident AI is in this suggestion
+  reasoning: string; // why AI suggested this recipe
 }
 
 export interface AppState {
