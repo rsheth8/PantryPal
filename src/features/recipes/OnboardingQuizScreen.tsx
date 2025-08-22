@@ -184,7 +184,7 @@ export default function OnboardingQuizScreen() {
         [
           {
             text: 'Continue',
-            onPress: () => navigation.navigate('MainTabs' as never),
+            onPress: () => navigation.goBack(),
           },
         ]
       );

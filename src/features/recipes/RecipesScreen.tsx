@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
@@ -23,6 +24,7 @@ import {
 } from '../../utils/designSystem';
 
 export default function RecipesScreen() {
+  const navigation = useNavigation();
   const { recipes, pantry } = useMultiUserStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<
