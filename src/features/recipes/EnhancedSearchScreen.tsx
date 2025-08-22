@@ -276,7 +276,7 @@ export default function EnhancedSearchScreen() {
     <PantryCard variant="default" padding="md" margin="sm">
       <TouchableOpacity
         onPress={() => {
-          Alert.alert('Recipe Details', `Viewing ${item.title}`);
+          navigation.navigate('RecipeDetail' as never, { recipe: item } as never);
         }}
         activeOpacity={0.8}
       >
@@ -328,7 +328,7 @@ export default function EnhancedSearchScreen() {
         <View style={styles.recipeActions}>
           <PantryButton
             title="View"
-            onPress={() => Alert.alert('Recipe Details', `Viewing ${item.title}`)}
+            onPress={() => navigation.navigate('RecipeDetail' as never, { recipe: item } as never)}
             variant="outline"
             size="sm"
           />

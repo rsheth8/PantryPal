@@ -34,7 +34,7 @@ export default function RecipesScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   const handleRecipePress = (recipe: any) => {
-    Alert.alert('Recipe Details', `Viewing ${recipe.title}`);
+    navigation.navigate('RecipeDetail' as never, { recipe } as never);
   };
 
   const handleAddRecipe = () => {
