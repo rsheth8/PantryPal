@@ -314,7 +314,11 @@ export default function RecipesScreen() {
         <View style={styles.recipesContainer}>
           {filteredRecipes.length > 0 ? (
             <View style={styles.recipesList}>
-              {filteredRecipes.map((item) => renderRecipeCard({ item }))}
+              {filteredRecipes.map((item) => (
+                <View key={item.id}>
+                  {renderRecipeCard({ item })}
+                </View>
+              ))}
             </View>
           ) : (
             <PantryCard variant='outlined' padding='xl'>

@@ -576,7 +576,11 @@ export default function EnhancedSearchScreen() {
             </View>
             
             <View style={styles.resultsList}>
-              {searchResults.map((item) => renderRecipeCard({ item }))}
+              {searchResults.map((item) => (
+                <View key={item.id}>
+                  {renderRecipeCard({ item })}
+                </View>
+              ))}
             </View>
           </View>
         ) : searchQuery && !isSearching ? (
