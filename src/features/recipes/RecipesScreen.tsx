@@ -175,7 +175,7 @@ export default function RecipesScreen() {
         }}
       />
 
-      <View style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Search and Discovery */}
         <PantryCard variant='elevated' padding='md' margin='none'>
           <View style={styles.searchContainer}>
@@ -341,7 +341,7 @@ export default function RecipesScreen() {
             </PantryCard>
           )}
         </View>
-      </View>
+      </ScrollView>
 
       {/* Recipe Discovery Modal */}
       <Modal

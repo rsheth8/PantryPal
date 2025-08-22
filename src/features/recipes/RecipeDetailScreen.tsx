@@ -118,7 +118,11 @@ export default function RecipeDetailScreen() {
         onBackPress={() => navigation.goBack()}
       />
       
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Recipe Image */}
         {recipe.imageUrl && (
           <PantryCard variant="elevated" padding="none" margin="none">
@@ -286,6 +290,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.md,
+  },
+  scrollContent: {
+    paddingBottom: spacing.xxl || 100,
   },
   recipeImage: {
     width: '100%',
@@ -459,7 +466,7 @@ const styles = StyleSheet.create({
   actionButtons: {
     gap: spacing.md,
     marginTop: spacing.lg,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.xxl || 80,
   },
   actionRow: {
     flexDirection: 'row',

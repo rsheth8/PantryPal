@@ -580,7 +580,8 @@ export default function EnhancedSearchScreen() {
               renderItem={renderRecipeCard}
               keyExtractor={item => item.id}
               showsVerticalScrollIndicator={false}
-              scrollEnabled={false}
+              scrollEnabled={true}
+              contentContainerStyle={styles.listContent}
             />
           </View>
         ) : searchQuery && !isSearching ? (
@@ -862,5 +863,8 @@ const styles = StyleSheet.create({
   filterActions: {
     gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  listContent: {
+    paddingBottom: spacing.xl,
   },
 });
