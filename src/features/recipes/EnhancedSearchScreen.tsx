@@ -136,32 +136,36 @@ export default function EnhancedSearchScreen() {
     return Array.from(suggestions).slice(0, 5);
   }, [searchQuery, recipes]);
 
-  const performSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const performSearch = async (searchText?: string) => {
+    const queryToSearch = searchText || searchQuery;
+    if (!queryToSearch.trim() && !hasActiveFilters()) return;
     
     setIsSearching(true);
     
     try {
-      // Add to search history
-      if (!searchHistory.includes(searchQuery)) {
-        setSearchHistory(prev => [searchQuery, ...prev.slice(0, 9)]);
+      // Add to search history if it's a text search
+      if (searchText && !searchHistory.includes(searchText)) {
+        setSearchHistory(prev => [searchText, ...prev.slice(0, 9)]);
       }
       
       // Filter recipes based on search query and filters
       let filteredRecipes = recipes.filter(recipe => {
-        const matchesSearch = 
-          recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          recipe.ingredients.some(ingredient => 
-            ingredient.toLowerCase().includes(searchQuery.toLowerCase())
-          ) ||
-          recipe.tags.some(tag => 
-            tag.toLowerCase().includes(searchQuery.toLowerCase())
-          ) ||
-          recipe.cuisines?.some(cuisine => 
-            cuisine.toLowerCase().includes(searchQuery.toLowerCase())
-          );
-        
-        if (!matchesSearch) return false;
+        // If there's a search query, check if recipe matches
+        if (queryToSearch.trim()) {
+          const matchesSearch = 
+            recipe.title.toLowerCase().includes(queryToSearch.toLowerCase()) ||
+            recipe.ingredients.some(ingredient => 
+              ingredient.toLowerCase().includes(queryToSearch.toLowerCase())
+            ) ||
+            recipe.tags.some(tag => 
+              tag.toLowerCase().includes(queryToSearch.toLowerCase())
+            ) ||
+            recipe.cuisines?.some(cuisine => 
+              cuisine.toLowerCase().includes(queryToSearch.toLowerCase())
+            );
+          
+          if (!matchesSearch) return false;
+        }
         
         // Apply filters
         if (filters.cuisines.length > 0) {
@@ -221,6 +225,15 @@ export default function EnhancedSearchScreen() {
     }
   };
 
+  const hasActiveFilters = () => {
+    return filters.cuisines.length > 0 || 
+           filters.diets.length > 0 || 
+           filters.difficulty || 
+           filters.maxTime > 0 || 
+           filters.allergens.length > 0 || 
+           filters.tags.length > 0;
+  };
+
   const getDifficultyFromTime = (totalTime: number): string => {
     if (totalTime <= 30) return 'easy';
     if (totalTime <= 60) return 'medium';
@@ -256,6 +269,7 @@ export default function EnhancedSearchScreen() {
       allergens: [],
       tags: [],
     });
+    setSearchResults([]);
   };
 
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
@@ -424,11 +438,18 @@ export default function EnhancedSearchScreen() {
         {/* Filters Toggle */}
         <PantryCard variant="fresh" padding="md">
           <View style={styles.filterToggleContainer}>
-            <Text style={styles.sectionTitle}>🔧 Advanced Filters</Text>
+            <View style={styles.filterToggleLeft}>
+              <Text style={styles.sectionTitle}>🔧 Advanced Filters</Text>
+              {hasActiveFilters() && (
+                <View style={styles.activeFiltersBadge}>
+                  <Text style={styles.activeFiltersText}>Active</Text>
+                </View>
+              )}
+            </View>
             <PantryButton
               title={showFilters ? "Hide Filters" : "Show Filters"}
               onPress={() => setShowFilters(!showFilters)}
-              variant="outline"
+              variant={hasActiveFilters() ? "primary" : "outline"}
               size="sm"
             />
           </View>
@@ -504,14 +525,30 @@ export default function EnhancedSearchScreen() {
               {/* Popular Tags */}
               {renderFilterSection('Popular Tags', POPULAR_TAGS, 'tags')}
 
-              {/* Clear Filters */}
-              <PantryButton
-                title="Clear All Filters"
-                onPress={clearFilters}
-                variant="ghost"
-                size="sm"
-                fullWidth
-              />
+              {/* Filter Actions */}
+              <View style={styles.filterActions}>
+                <PantryButton
+                  title="Apply Filters"
+                  onPress={() => {
+                    performSearch();
+                    setShowFilters(false);
+                  }}
+                  variant="primary"
+                  size="md"
+                  fullWidth
+                  disabled={!hasActiveFilters()}
+                />
+                <PantryButton
+                  title="Clear All Filters"
+                  onPress={() => {
+                    clearFilters();
+                    setSearchResults([]);
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  fullWidth
+                />
+              </View>
             </View>
           )}
         </PantryCard>
@@ -532,6 +569,9 @@ export default function EnhancedSearchScreen() {
               </Text>
               <Text style={styles.resultsSubtitle}>
                 {searchQuery ? `for "${searchQuery}"` : 'matching your criteria'}
+                {hasActiveFilters() && (
+                  <Text style={styles.activeFiltersNote}> • Filters applied</Text>
+                )}
               </Text>
             </View>
             
@@ -631,6 +671,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  filterToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  activeFiltersBadge: {
+    backgroundColor: colors.success + '20',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  activeFiltersText: {
+    ...typography.caption,
+    color: colors.success,
+    fontWeight: '600',
+  },
   sectionTitle: {
     ...typography.h4,
     color: colors.neutral[800],
@@ -697,6 +753,11 @@ const styles = StyleSheet.create({
   resultsSubtitle: {
     ...typography.bodySmall,
     color: colors.neutral[600],
+  },
+  activeFiltersNote: {
+    ...typography.bodySmall,
+    color: colors.primary[600],
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
@@ -797,5 +858,9 @@ const styles = StyleSheet.create({
   recipeActions: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  filterActions: {
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
 });
