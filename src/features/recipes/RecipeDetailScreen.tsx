@@ -290,9 +290,11 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.md,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingBottom: spacing.xxl || 100,
+    minHeight: '100%',
   },
   recipeImage: {
     width: '100%',
