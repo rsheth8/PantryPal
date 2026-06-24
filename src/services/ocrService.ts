@@ -104,6 +104,24 @@ class OCRService {
     }
   }
 
+  /**
+   * Extract grocery items from a photo. When a base64 image and a Google
+   * Vision API key are available the real OCR pipeline is used; otherwise a
+   * mock receipt is parsed so the feature is demonstrable without a key.
+   */
+  async extractItemsFromImage(base64?: string): Promise<ReceiptItem[]> {
+    try {
+      const text =
+        base64 && GOOGLE_CLOUD_VISION_API_KEY
+          ? await this.callGoogleVisionAPI(base64)
+          : await this.mockOCRProcessing();
+      return this.parseReceiptText(text);
+    } catch (error) {
+      console.error('Failed to extract items from image:', error);
+      return [];
+    }
+  }
+
   private async imageToBase64(_uri: string): Promise<string> {
     // This would convert the image URI to base64
     // For now, return empty string

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,13 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Modal,
   FlatList,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
+import AddItemModal from '../../components/AddItemModal';
 import {
   colors,
   typography,
@@ -22,7 +22,7 @@ import {
 } from '../../utils/designSystem';
 
 export default function PantryScreen() {
-  const { pantry } = useMultiUserStore();
+  const { pantry, markItemAsUsed } = useMultiUserStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -30,11 +30,6 @@ export default function PantryScreen() {
   const [sortBy, setSortBy] = useState<'name' | 'expiration' | 'category'>(
     'name'
   );
-
-  // Debug: Log the current state
-  useEffect(() => {
-    console.log('PantryScreen: Current pantry items:', pantry.length);
-  }, [pantry]);
 
   const handleMergeDuplicates = () => {
     Alert.alert(
@@ -78,13 +73,9 @@ export default function PantryScreen() {
     setShowAddModal(true);
   };
 
-  const handleCloseAddModal = () => {
-    setShowAddModal(false);
-  };
-
-  const handleSaveItem = () => {
-    Alert.alert('Success', 'Item added to pantry!');
-    setShowAddModal(false);
+  const handleUseItem = (itemId: string, itemName: string) => {
+    markItemAsUsed(itemId);
+    Alert.alert('Item Used', `Marked ${itemName} as used`);
   };
 
   // Filter and sort items
@@ -144,7 +135,7 @@ export default function PantryScreen() {
       <View style={styles.itemActions}>
         <PantryButton
           title='Use'
-          onPress={() => Alert.alert('Use Item', `Marked ${item.name} as used`)}
+          onPress={() => handleUseItem(item.id, item.name)}
           variant='success'
           size='sm'
         />
@@ -330,43 +321,10 @@ export default function PantryScreen() {
       </View>
 
       {/* Add Item Modal */}
-      <Modal
+      <AddItemModal
         visible={showAddModal}
-        animationType='slide'
-        presentationStyle='pageSheet'
-      >
-        <View style={styles.modalContainer}>
-          <PantryHeader
-            title='Add Item'
-            subtitle='Add a new item to your pantry'
-            gradient='primary'
-            showBackButton
-            onBackPress={handleCloseAddModal}
-          />
-
-          <View style={styles.modalContent}>
-            <PantryCard variant='elevated' padding='lg'>
-              <Text style={styles.modalPlaceholder}>
-                Add item form coming soon!
-              </Text>
-              <View style={styles.modalActions}>
-                <PantryButton
-                  title='Cancel'
-                  onPress={handleCloseAddModal}
-                  variant='outline'
-                  size='md'
-                />
-                <PantryButton
-                  title='Save'
-                  onPress={handleSaveItem}
-                  variant='primary'
-                  size='md'
-                />
-              </View>
-            </PantryCard>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowAddModal(false)}
+      />
     </View>
   );
 }
@@ -460,24 +418,6 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: spacing.xl,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  modalContainer: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  modalContent: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  modalPlaceholder: {
-    ...typography.body,
-    color: colors.neutral[600],
-    marginBottom: spacing.lg,
-    textAlign: 'center',
   },
   optionsGrid: {
     flexDirection: 'row',
