@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
   Alert,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
@@ -17,14 +16,10 @@ import {
   typography,
   spacing,
   borderRadius,
-  shadows,
 } from '../../utils/designSystem';
 
-const { width } = Dimensions.get('window');
-
 export default function AnalyticsScreen() {
-  const { pantry, shoppingList, recipes, currentHousehold } =
-    useMultiUserStore();
+  const { pantry, shoppingList, recipes } = useMultiUserStore();
   const [activeTab, setActiveTab] = useState<
     'overview' | 'spending' | 'waste' | 'household' | 'shopping'
   >('overview');
@@ -285,28 +280,126 @@ export default function AnalyticsScreen() {
 }
 
 const styles = StyleSheet.create({
+  actionsGrid: {
+    gap: spacing.sm,
+  },
+  activeTabButton: {
+    backgroundColor: colors.primary[500],
+  },
+  activeTabLabel: {
+    color: '#fff',
+  },
   container: {
-    flex: 1,
     backgroundColor: colors.neutral[50],
+    flex: 1,
   },
   content: {
     flex: 1,
     padding: spacing.md,
   },
+  metricCard: {
+    alignItems: 'center',
+    backgroundColor: colors.neutral[100],
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    width: '48%',
+  },
+  metricLabel: {
+    ...typography.caption,
+    color: colors.neutral[600],
+    textAlign: 'center',
+  },
+  metricValue: {
+    ...typography.h2,
+    color: colors.neutral[900],
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  placeholderText: {
+    ...typography.body,
+    color: colors.neutral[600],
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  progressBar: {
+    backgroundColor: colors.neutral[200],
+    borderRadius: 6,
+    height: 12,
+    overflow: 'hidden',
+  },
+  progressContainer: {
+    marginTop: spacing.sm,
+  },
+  progressFill: {
+    backgroundColor: colors.success,
+    borderRadius: 6,
+    height: '100%',
+  },
+  progressHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  progressPercentage: {
+    ...typography.body,
+    color: colors.neutral[700],
+    fontWeight: '600',
+  },
+  progressText: {
+    ...typography.body,
+    color: colors.neutral[700],
+    fontWeight: '500',
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.md,
+  },
+  statusGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statusIcon: {
+    fontSize: 24,
+    marginBottom: spacing.xs,
+  },
+  statusItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statusLabel: {
+    ...typography.caption,
+    color: colors.neutral[600],
+    textAlign: 'center',
+  },
+  statusValue: {
+    ...typography.h3,
+    color: colors.neutral[900],
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  tabButton: {
+    alignItems: 'center',
+    backgroundColor: colors.neutral[100],
+    borderRadius: borderRadius.md,
+    minWidth: 80,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
   tabContainer: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  tabButton: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.neutral[100],
-    minWidth: 80,
-  },
-  activeTabButton: {
-    backgroundColor: colors.primary[500],
+  tabContent: {
+    flex: 1,
+    marginTop: spacing.md,
   },
   tabIcon: {
     fontSize: 20,
@@ -316,103 +409,5 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.neutral[700],
     fontWeight: '500',
-  },
-  activeTabLabel: {
-    color: '#fff',
-  },
-  tabContent: {
-    flex: 1,
-    marginTop: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  metricCard: {
-    width: '48%',
-    alignItems: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.neutral[100],
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-  },
-  metricValue: {
-    ...typography.h2,
-    color: colors.neutral[900],
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  metricLabel: {
-    ...typography.caption,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  statusGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statusItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statusIcon: {
-    fontSize: 24,
-    marginBottom: spacing.xs,
-  },
-  statusValue: {
-    ...typography.h3,
-    color: colors.neutral[900],
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  statusLabel: {
-    ...typography.caption,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  progressContainer: {
-    marginTop: spacing.sm,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  progressText: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-  progressPercentage: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '600',
-  },
-  progressBar: {
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.neutral[200],
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.success,
-    borderRadius: 6,
-  },
-  placeholderText: {
-    ...typography.body,
-    color: colors.neutral[600],
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  actionsGrid: {
-    gap: spacing.sm,
   },
 });

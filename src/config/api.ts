@@ -1,18 +1,18 @@
 // API Configuration
-// Replace these with your actual API keys
+//
+// These are private, billable API keys and must NOT be committed to source
+// control. Set them in a local `.env` file (see `.env.example`) using Expo's
+// `EXPO_PUBLIC_` convention so they are inlined at build time.
 
 export const API_CONFIG = {
   // Spoonacular Recipe API
   // Get your key from: https://spoonacular.com/food-api
-  SPOONACULAR_API_KEY: '333035f316414e69a90ee5872e94d208',
+  SPOONACULAR_API_KEY: process.env.EXPO_PUBLIC_SPOONACULAR_API_KEY ?? '',
 
   // Google Cloud Vision API (for OCR)
   // Get your key from: https://console.cloud.google.com/
-  GOOGLE_CLOUD_VISION_API_KEY: 'AIzaSyDY8Uu-PDAQiGQ3uqNUKW4FMcs4xTc1BZs',
-
-  // Example API keys (replace with your actual keys):
-  // SPOONACULAR_API_KEY: 'abc123def456ghi789jkl012mno345pqr678stu901vwx234yz',
-  // GOOGLE_CLOUD_VISION_API_KEY: 'AIzaSyB...',
+  GOOGLE_CLOUD_VISION_API_KEY:
+    process.env.EXPO_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY ?? '',
 };
 
 // API Limits and Usage

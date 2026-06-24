@@ -8,15 +8,8 @@ import {
   UserPreferences,
   User,
   Household,
-  AppState,
 } from '../types';
-import {
-  generateId,
-  categorizeItem,
-  getDaysUntilExpiration,
-  isExpiringSoon,
-  isExpired,
-} from '../utils/helpers';
+import { isExpiringSoon } from '../utils/helpers';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import { supabaseService } from '../services/supabaseService';

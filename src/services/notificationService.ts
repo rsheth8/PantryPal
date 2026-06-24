@@ -116,7 +116,10 @@ class NotificationService {
             body: `${item.name} expires in ${daysUntilExpiration} days`,
             data: { type: 'expiration', itemId: item.id },
           },
-          trigger: { date: trigger },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: trigger,
+          },
         });
       }
     } catch (error) {
@@ -145,7 +148,10 @@ class NotificationService {
               currentQuantity: item.quantity,
             },
           },
-          trigger: { date: trigger },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: trigger,
+          },
         });
       }
     } catch (error) {
@@ -177,7 +183,10 @@ class NotificationService {
             itemName,
           },
         },
-        trigger: { date: trigger },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: trigger,
+        },
       });
     } catch (error) {
       console.error('Failed to schedule household notification:', error);
@@ -202,7 +211,10 @@ class NotificationService {
           body: 'Time to check your pantry and update your shopping list!',
           data: { type: 'shopping_reminder' },
         },
-        trigger: { date: trigger },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: trigger,
+        },
       });
     } catch (error) {
       console.error('Failed to schedule shopping reminder:', error);
@@ -247,7 +259,10 @@ class NotificationService {
           body: 'This is a test notification from PantryPal!',
           data: { type: 'general' },
         },
-        trigger: { seconds: 2 },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 2,
+        },
       });
     } catch (error) {
       console.error('Failed to send test notification:', error);

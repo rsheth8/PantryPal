@@ -546,7 +546,7 @@ class EnhancedMealPlanningService {
       userId: 'temp-user', // Placeholder, will be replaced by actual ID
       householdId: 'temp-household', // Placeholder, will be replaced by actual ID
       weekStartDate: weekStartDate.toISOString(),
-      meals: meals,
+      meals,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -672,8 +672,8 @@ class EnhancedMealPlanningService {
   ): MealPlan {
     return {
       id: 'temp-id', // Placeholder, will be replaced by actual ID
-      userId: userId,
-      householdId: householdId,
+      userId,
+      householdId,
       weekStartDate: weekStartDate.toISOString(),
       meals: {},
       createdAt: new Date().toISOString(),

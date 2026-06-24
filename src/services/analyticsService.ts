@@ -1,10 +1,4 @@
-import {
-  GroceryItem,
-  ShoppingListItem,
-  Recipe,
-  User,
-  Household,
-} from '../types';
+import { GroceryItem, ShoppingListItem, Recipe } from '../types';
 
 export interface SimpleAnalyticsData {
   totalItems: number;

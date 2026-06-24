@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 import { colors, borderRadius, shadows, spacing } from '../utils/designSystem';
 
 interface PantryCardProps {

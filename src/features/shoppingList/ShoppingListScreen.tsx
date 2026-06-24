@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   FlatList,
@@ -18,7 +17,6 @@ import {
   typography,
   spacing,
   borderRadius,
-  shadows,
 } from '../../utils/designSystem';
 
 export default function ShoppingListScreen() {
@@ -337,98 +335,98 @@ export default function ShoppingListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral[50],
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  progressText: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-  progressPercentage: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '600',
-  },
-  progressBarContainer: {
-    marginTop: spacing.xs,
-  },
-  progressBar: {
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.neutral[200],
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.success,
-    borderRadius: 6,
-  },
-  searchInput: {
-    height: 44,
-    backgroundColor: colors.neutral[100],
-    borderRadius: borderRadius.input,
-    paddingHorizontal: spacing.md,
-    fontSize: 16,
-    color: colors.neutral[900],
-    borderWidth: 1,
-    borderColor: colors.neutral[200],
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
   actionsGrid: {
     gap: spacing.sm,
   },
-  listContainer: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  listContent: {
-    paddingBottom: spacing.xl,
-  },
-  itemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  itemContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkboxContainer: {
-    marginRight: spacing.md,
-  },
   checkbox: {
-    width: 24,
-    height: 24,
+    alignItems: 'center',
+    borderColor: colors.neutral[300],
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.neutral[300],
-    alignItems: 'center',
+    height: 24,
     justifyContent: 'center',
+    width: 24,
   },
   checkboxCompleted: {
     backgroundColor: colors.success,
     borderColor: colors.success,
   },
+  checkboxContainer: {
+    marginRight: spacing.md,
+  },
   checkmark: {
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  container: {
+    backgroundColor: colors.neutral[50],
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyStateIcon: {
+    fontSize: 64,
+    marginBottom: spacing.md,
+  },
+  emptyStateSubtext: {
+    ...typography.bodySmall,
+    color: colors.neutral[500],
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    ...typography.h4,
+    color: colors.neutral[600],
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: colors.neutral[100],
+    borderColor: colors.neutral[200],
+    borderRadius: borderRadius.input,
+    borderWidth: 1,
+    color: colors.neutral[900],
+    fontSize: 16,
+    height: 44,
+    paddingHorizontal: spacing.md,
+  },
+  inputGroup: {
+    marginBottom: spacing.md,
+  },
+  inputLabel: {
+    ...typography.body,
+    color: colors.neutral[700],
+    fontWeight: '500',
+    marginBottom: spacing.xs,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  itemActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  itemContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  itemContent: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+  },
+  itemDetails: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
   },
   itemInfo: {
     flex: 1,
@@ -440,52 +438,35 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   itemNameCompleted: {
-    textDecorationLine: 'line-through',
     color: colors.neutral[500],
+    textDecorationLine: 'line-through',
   },
-  itemDetails: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
+  listContainer: {
+    flex: 1,
+    padding: spacing.md,
   },
-  itemActions: {
+  listContent: {
+    paddingBottom: spacing.xl,
+  },
+  modalActions: {
     flexDirection: 'row',
     gap: spacing.sm,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: spacing.md,
-  },
-  emptyStateText: {
-    ...typography.h4,
-    color: colors.neutral[600],
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  emptyStateSubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
+    marginTop: spacing.lg,
   },
   modalContent: {
-    width: '90%',
     maxWidth: 400,
+    width: '90%',
+  },
+  modalOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    bottom: 0,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 1000,
   },
   modalTitle: {
     ...typography.h3,
@@ -493,32 +474,49 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     textAlign: 'center',
   },
-  inputGroup: {
-    marginBottom: spacing.md,
+  progressBar: {
+    backgroundColor: colors.neutral[200],
+    borderRadius: 6,
+    height: 12,
+    overflow: 'hidden',
   },
-  inputLabel: {
+  progressBarContainer: {
+    marginTop: spacing.xs,
+  },
+  progressFill: {
+    backgroundColor: colors.success,
+    borderRadius: 6,
+    height: '100%',
+  },
+  progressHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  progressPercentage: {
+    ...typography.body,
+    color: colors.neutral[700],
+    fontWeight: '600',
+  },
+  progressText: {
     ...typography.body,
     color: colors.neutral[700],
     fontWeight: '500',
-    marginBottom: spacing.xs,
   },
-  input: {
-    height: 44,
+  searchInput: {
     backgroundColor: colors.neutral[100],
-    borderRadius: borderRadius.input,
-    paddingHorizontal: spacing.md,
-    fontSize: 16,
-    color: colors.neutral[900],
-    borderWidth: 1,
     borderColor: colors.neutral[200],
+    borderRadius: borderRadius.input,
+    borderWidth: 1,
+    color: colors.neutral[900],
+    fontSize: 16,
+    height: 44,
+    paddingHorizontal: spacing.md,
   },
-  inputRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.md,
   },
 });

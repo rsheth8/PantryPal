@@ -5,12 +5,14 @@ A modern, collaborative pantry management app built with React Native and Expo. 
 ## ✨ Features
 
 ### 🏠 **Household Management**
+
 - Create and join households with unique codes
 - Manage multiple family members or roommates
 - Shared and private item visibility
 - Real-time collaboration
 
 ### 🥫 **Smart Pantry Management**
+
 - Track groceries with expiration dates
 - Automatic expiration warnings
 - Categorize items (Dairy, Produce, Grains, etc.)
@@ -18,28 +20,33 @@ A modern, collaborative pantry management app built with React Native and Expo. 
 - Shared vs. private items
 
 ### 📖 **Recipe Integration**
+
 - Save and organize recipes
 - Check if you can cook recipes with current ingredients
 - Missing ingredient detection
 - Recipe discovery and favorites
 
 ### 🛒 **Shopping List**
+
 - Create and manage shopping lists
 - Sync missing ingredients from recipes
 - Track completion progress
 - Categorize items for efficient shopping
 
 ### 📱 **Smart Scanning**
+
 - Barcode scanning for quick item addition
 - OCR receipt scanning (coming soon)
 - Manual item entry
 
 ### 🍳 **Meal Planning**
+
 - AI-powered meal plan generation
 - Dietary preference management
 - Recipe recommendations based on pantry contents
 
 ### 📊 **Analytics & Insights**
+
 - Spending tracking and analysis
 - Waste reduction insights
 - Household activity monitoring
@@ -55,6 +62,7 @@ PantryPal features a unique, food-inspired design system:
 - **Warm Cream** - Neutral colors for natural, organic feel
 
 ### Components
+
 - `PantryHeader` - Consistent headers with gradients
 - `PantryCard` - Multiple variants for content organization
 - `PantryButton` - Unified button system with icons and subtitles
@@ -70,11 +78,12 @@ PantryPal features a unique, food-inspired design system:
 
 ## 📱 Screenshots
 
-*Screenshots coming soon*
+_Screenshots coming soon_
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js (v16 or higher)
 - Expo CLI
 - iOS Simulator or Android Emulator (optional)
@@ -82,27 +91,40 @@ PantryPal features a unique, food-inspired design system:
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd PantryPal
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
-3. **Set up Supabase**
+3. **Configure environment variables**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Then fill in the values in `.env` (see `.env.example` for the full list):
+   - `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` — your Supabase project
+   - `EXPO_PUBLIC_SPOONACULAR_API_KEY` — recipe data ([Spoonacular](https://spoonacular.com/food-api))
+   - `EXPO_PUBLIC_GOOGLE_CLOUD_VISION_API_KEY` — OCR scanning ([Google Cloud Vision](https://console.cloud.google.com/))
+
+   `.env` is gitignored — never commit real keys. The app reads these at build
+   time via Expo's `EXPO_PUBLIC_` convention, so restart the dev server after
+   changing them.
+
+4. **Set up Supabase**
    - Create a Supabase project
    - Run the SQL schema from `FINAL_SQL_SCHEMA.sql`
-   - Update `src/config/supabase.ts` with your project credentials
-
-4. **Configure API Keys** (optional)
-   - Update `src/config/api.ts` with your API keys for:
-     - Spoonacular (recipe data)
-     - Google Cloud Vision (OCR scanning)
+   - Make sure Row Level Security is enabled (the anon key is client-safe with RLS)
 
 5. **Start the development server**
+
    ```bash
    npx expo start
    ```
@@ -154,6 +176,7 @@ src/
 ## 🔧 Development
 
 ### 🚀 Quick Start
+
 ```bash
 # Install dependencies
 npm install
@@ -169,6 +192,7 @@ npm run build:check
 ```
 
 ### 📋 Available Scripts
+
 ```bash
 # Development
 npm run dev              # Start Expo development server
@@ -195,6 +219,7 @@ npm run clean            # Clean and reinstall dependencies
 ```
 
 ### 🧪 Testing
+
 The project uses Jest and React Native Testing Library for comprehensive testing:
 
 ```bash
@@ -209,6 +234,7 @@ npm run test:coverage
 ```
 
 ### 📏 Code Quality
+
 The project enforces high code quality standards:
 
 - **ESLint**: Code linting with TypeScript and React Native rules
@@ -218,15 +244,18 @@ The project enforces high code quality standards:
 - **Lint-staged**: Run linters on staged files only
 
 ### 🔄 Git Workflow
+
 1. Create feature branch: `git checkout -b feature/feature-name`
 2. Make changes and commit: `git commit -m "feat: add new feature"`
 3. Push and create PR: `git push origin feature/feature-name`
 4. Code review and merge
 
 ### 📚 Development Guidelines
+
 See [Development Guidelines](docs/DEVELOPMENT_GUIDELINES.md) for detailed coding standards and best practices.
 
 ### 🚀 Agile Methodology
+
 See [Agile Methodology](docs/AGILE_METHODOLOGY.md) for project management and development process details.
 
 ## 🤝 Contributing

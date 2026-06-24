@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, ViewStyle } from 'react-native';
+import { ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients } from '../utils/designSystem';
+import { gradients } from '../utils/designSystem';
 
 interface GradientBackgroundProps {
   children: React.ReactNode;

@@ -49,44 +49,43 @@ export default function MealPlanningScreen() {
   });
 
   // Enhanced dietary preferences
-  const [dietaryPreferences, setDietaryPreferences] =
-    useState<DietaryPreferences>({
-      userId: currentUser?.id || '',
+  const [dietaryPreferences] = useState<DietaryPreferences>({
+    userId: currentUser?.id || '',
 
-      // SACRED - Never relaxed
-      diets: [],
-      allergens: [],
-      medicalRestrictions: [],
+    // SACRED - Never relaxed
+    diets: [],
+    allergens: [],
+    medicalRestrictions: [],
 
-      // FLEXIBLE - Can be relaxed
-      cuisines: [],
-      difficulty: 'any',
-      maxPrepTime: 30,
-      maxCookTime: 60,
+    // FLEXIBLE - Can be relaxed
+    cuisines: [],
+    difficulty: 'any',
+    maxPrepTime: 30,
+    maxCookTime: 60,
 
-      // Nutrition Goals
-      nutritionGoals: {
-        dailyCalories: 2000,
-        proteinPercentage: 25,
-        carbsPercentage: 45,
-        fatPercentage: 30,
-        maxFiber: 30,
-        maxSugar: 50,
-        maxSodium: 2300,
-      },
+    // Nutrition Goals
+    nutritionGoals: {
+      dailyCalories: 2000,
+      proteinPercentage: 25,
+      carbsPercentage: 45,
+      fatPercentage: 30,
+      maxFiber: 30,
+      maxSugar: 50,
+      maxSodium: 2300,
+    },
 
-      // Lifestyle Preferences
-      lifestyle: {
-        familySize: 2,
-        budget: 'moderate',
-        mealFrequency: 3,
-        prepStyle: 'any',
-        skillLevel: 'intermediate',
-      },
+    // Lifestyle Preferences
+    lifestyle: {
+      familySize: 2,
+      budget: 'moderate',
+      mealFrequency: 3,
+      prepStyle: 'any',
+      skillLevel: 'intermediate',
+    },
 
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
 
   const handleGenerateMealPlan = async () => {
     if (!currentUser) {
@@ -114,7 +113,7 @@ export default function MealPlanningScreen() {
         maxPrepTime: planningOptions.maxPrepTime || 30,
         maxCookTime: planningOptions.maxCookTime || 60,
         exploreNewRecipes: planningOptions.exploreNewRecipes || true,
-        dietaryPreferences: dietaryPreferences,
+        dietaryPreferences,
       };
 
       const result = await enhancedMealPlanningService.generateMealPlan(
@@ -164,54 +163,6 @@ export default function MealPlanningScreen() {
     } catch (error) {
       Alert.alert('Error', 'Failed to save meal plan.');
     }
-  };
-
-  const handleQuickTest = async () => {
-    if (!currentUser) {
-      Alert.alert('Error', 'Please log in to run a quick test.');
-      return;
-    }
-
-    // Test the filtering logic directly
-    const { enhancedMealPlanningService } = require(
-      '../../services/enhancedMealPlanningService'
-    );
-
-    // Simulate the filtering process
-    let availableRecipes = recipes;
-    if (dietaryPreferences.cuisines.length > 0) {
-      availableRecipes = availableRecipes.filter(recipe => {
-        const recipeCuisines = recipe.cuisines || [];
-        const hasMatchingCuisine = dietaryPreferences.cuisines.some(cuisine =>
-          recipeCuisines.includes(cuisine)
-        );
-        return hasMatchingCuisine;
-      });
-    }
-
-    if (dietaryPreferences.diets.length > 0) {
-      // If vegetarian is selected, also include vegan dishes
-      const effectiveDiets = [...dietaryPreferences.diets];
-      if (
-        dietaryPreferences.diets.includes('vegetarian') &&
-        !dietaryPreferences.diets.includes('vegan')
-      ) {
-        effectiveDiets.push('vegan');
-      }
-
-      availableRecipes = availableRecipes.filter(recipe => {
-        const recipeDiets = recipe.diets || [];
-        const hasMatchingDiet = effectiveDiets.some(diet =>
-          recipeDiets.includes(diet)
-        );
-        return hasMatchingDiet;
-      });
-    }
-
-    Alert.alert(
-      'Quick Test Results',
-      `Found ${availableRecipes.length} recipes matching your preferences.`
-    );
   };
 
   const renderMealPlan = () => {
@@ -430,7 +381,7 @@ export default function MealPlanningScreen() {
           <View style={styles.exploreInfo}>
             <Text style={styles.exploreInfoText}>
               🌍 Discover new cuisines and recipes from around the world, even
-              if you don't have all the ingredients yet!
+              if you don&apos;t have all the ingredients yet!
             </Text>
           </View>
         </View>
@@ -647,135 +598,125 @@ export default function MealPlanningScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#f5f5f5',
+    flex: 1,
   },
-  header: {
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  dayContainer: {
+    marginBottom: 20,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+  dayTitle: {
     color: '#333',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 8,
-  },
-  debugToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  debugToggleText: {
-    fontSize: 14,
-    color: '#666',
-    marginRight: 8,
-  },
-  section: {
-    backgroundColor: '#fff',
-    margin: 16,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  optionLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  numberInput: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 8,
-    width: 60,
-    textAlign: 'center',
   },
   editButton: {
     backgroundColor: '#4CAF50',
+    borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
   },
   editButtonText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
   },
-  preferencesSummary: {
-    backgroundColor: '#f8f9fa',
-    padding: 16,
+  enhancedPreferencesButton: {
+    alignItems: 'center',
+    backgroundColor: '#6f42c1',
     borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    marginBottom: 12,
+    paddingVertical: 16,
   },
-  preferenceText: {
+  enhancedPreferencesButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  exploreInfo: {
+    backgroundColor: '#e0f7fa',
+    borderRadius: 8,
+    marginTop: 12,
+    padding: 12,
+  },
+  exploreInfoText: {
+    color: '#00796b',
     fontSize: 14,
-    color: '#666',
+    textAlign: 'center',
   },
   generateButton: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 16,
-    borderRadius: 8,
     alignItems: 'center',
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+    paddingVertical: 16,
   },
   generateButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
   },
-  disabledButton: {
-    backgroundColor: '#ccc',
+  header: {
+    backgroundColor: '#fff',
+    borderBottomColor: '#e0e0e0',
+    borderBottomWidth: 1,
+    padding: 16,
+  },
+  mealItem: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    marginBottom: 8,
+    padding: 12,
+  },
+  mealNutrition: {
+    color: '#555',
+    fontSize: 12,
+    marginTop: 4,
   },
   mealPlanContainer: {
     backgroundColor: '#fff',
-    margin: 16,
     borderRadius: 12,
+    elevation: 3,
+    margin: 16,
     padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
   },
-  nutritionSummary: {
-    marginBottom: 20,
+  mealServings: {
+    color: '#666',
+    fontSize: 12,
+    marginTop: 2,
   },
-  nutritionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  mealTitle: {
     color: '#333',
-    marginBottom: 12,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  mealType: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  modalButton: {
+    alignItems: 'center',
+    borderRadius: 8,
+    flex: 1,
+    paddingVertical: 12,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  numberInput: {
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 8,
+    textAlign: 'center',
+    width: 60,
   },
   nutritionGrid: {
     flexDirection: 'row',
@@ -784,237 +725,138 @@ const styles = StyleSheet.create({
   nutritionItem: {
     alignItems: 'center',
   },
-  nutritionValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
   nutritionLabel: {
-    fontSize: 12,
     color: '#666',
+    fontSize: 12,
   },
-  dayContainer: {
+  nutritionSummary: {
     marginBottom: 20,
   },
-  dayTitle: {
+  nutritionTitle: {
+    color: '#333',
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  mealItem: {
-    backgroundColor: '#f9f9f9',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  mealType: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-    marginBottom: 4,
-  },
-  mealTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  mealServings: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  mealNutrition: {
-    fontSize: 12,
-    color: '#555',
-    marginTop: 4,
-  },
-  debugSection: {
-    backgroundColor: '#f5f5f5',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  debugTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  debugText: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  quickTestButton: {
-    backgroundColor: '#2196F3',
-    padding: 8,
-    borderRadius: 6,
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  quickTestButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    width: '90%',
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  preferencesContent: {
-    maxHeight: 400,
-  },
-  preferenceSection: {
-    marginBottom: 20,
-  },
-  preferenceTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  preferenceNote: {
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-    marginBottom: 8,
-  },
-  preferenceOption: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    marginBottom: 4,
-    backgroundColor: '#f0f0f0',
-  },
-  selectedOption: {
-    backgroundColor: '#4CAF50',
-  },
-  preferenceOptionText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  selectedOptionText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: '#9e9e9e',
-  },
-  modalSaveButton: {
-    backgroundColor: '#4CAF50',
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  exploreInfo: {
-    backgroundColor: '#e0f7fa',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  exploreInfoText: {
-    fontSize: 14,
-    color: '#00796b',
-    textAlign: 'center',
-  },
-  enhancedPreferencesButton: {
-    backgroundColor: '#6f42c1',
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
     marginBottom: 12,
   },
-  enhancedPreferencesButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  preferencesTitle: {
-    fontSize: 16,
+  nutritionValue: {
+    color: '#4CAF50',
+    fontSize: 20,
     fontWeight: 'bold',
+  },
+  optionItem: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  optionLabel: {
     color: '#333',
-    marginBottom: 8,
+    fontSize: 16,
   },
-  preferencesText: {
-    fontSize: 14,
+  preferenceText: {
     color: '#666',
-    marginBottom: 4,
+    fontSize: 14,
   },
-  resultsContainer: {
+  preferencesSummary: {
     backgroundColor: '#f8f9fa',
-    padding: 12,
+    borderColor: '#e9ecef',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    marginBottom: 16,
+    padding: 16,
+  },
+  preferencesText: {
+    color: '#666',
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  preferencesTitle: {
+    color: '#333',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  resultItem: {
+    color: '#666',
+    fontSize: 12,
+    marginBottom: 2,
+    marginLeft: 8,
+  },
+  resultLabel: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: '600',
   },
   resultRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  resultLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  resultValue: {
-    fontSize: 14,
-    color: '#007bff',
-    fontWeight: '600',
-  },
   resultSection: {
     marginTop: 12,
   },
   resultSubtitle: {
+    color: '#333',
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 4,
   },
-  resultItem: {
-    fontSize: 12,
+  resultValue: {
+    color: '#007bff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  resultsContainer: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#e9ecef',
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 12,
+  },
+  saveButton: {
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    paddingVertical: 16,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  section: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    elevation: 3,
+    margin: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    color: '#333',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  subtitle: {
     color: '#666',
-    marginLeft: 8,
-    marginBottom: 2,
+    fontSize: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  title: {
+    color: '#333',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 4,
   },
 });

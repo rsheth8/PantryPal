@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Switch,
   Alert,
 } from 'react-native';
@@ -12,15 +11,13 @@ import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-  shadows,
-} from '../../utils/designSystem';
+import { colors, typography, spacing } from '../../utils/designSystem';
 
-export default function SettingsScreen() {
+interface SettingsScreenProps {
+  onSignOut?: () => void;
+}
+
+export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   const { currentUser, currentHousehold, leaveHousehold } = useMultiUserStore();
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
@@ -33,8 +30,7 @@ export default function SettingsScreen() {
         text: 'Sign Out',
         style: 'destructive',
         onPress: () => {
-          // Handle sign out
-          Alert.alert('Success', 'You have been signed out');
+          onSignOut?.();
         },
       },
     ]);
@@ -208,7 +204,8 @@ export default function SettingsScreen() {
           <PantryCard variant='outlined' padding='lg'>
             <Text style={styles.sectionTitle}>🏠 Household</Text>
             <Text style={styles.householdDescription}>
-              You are currently part of the "{currentHousehold.name}" household.
+              You are currently part of the &quot;{currentHousehold.name}&quot;
+              household.
             </Text>
 
             <PantryButton
@@ -259,57 +256,12 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: colors.neutral[50],
+    flex: 1,
   },
   content: {
     flex: 1,
     padding: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  profileInfo: {
-    alignItems: 'center',
-  },
-  profileName: {
-    ...typography.h3,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  profileEmail: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.xs,
-  },
-  householdName: {
-    ...typography.bodySmall,
-    color: colors.primary[600],
-    fontWeight: '600',
-  },
-  settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral[100],
-  },
-  settingContent: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  settingTitle: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  settingSubtitle: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
   },
   householdDescription: {
     ...typography.bodySmall,
@@ -317,13 +269,18 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     textAlign: 'center',
   },
+  householdName: {
+    ...typography.bodySmall,
+    color: colors.primary[600],
+    fontWeight: '600',
+  },
   infoItem: {
+    alignItems: 'center',
+    borderBottomColor: colors.neutral[100],
+    borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral[100],
   },
   infoLabel: {
     ...typography.body,
@@ -333,5 +290,45 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.neutral[600],
     fontWeight: '500',
+  },
+  profileEmail: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+    marginBottom: spacing.xs,
+  },
+  profileInfo: {
+    alignItems: 'center',
+  },
+  profileName: {
+    ...typography.h3,
+    color: colors.neutral[800],
+    marginBottom: spacing.xs,
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.md,
+  },
+  settingContent: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  settingItem: {
+    alignItems: 'center',
+    borderBottomColor: colors.neutral[100],
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+  },
+  settingSubtitle: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+  },
+  settingTitle: {
+    ...typography.body,
+    color: colors.neutral[800],
+    fontWeight: '600',
+    marginBottom: spacing.xs,
   },
 });

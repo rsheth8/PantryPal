@@ -44,7 +44,7 @@ class UserService {
     name: string,
     email: string,
     avatar?: string,
-    userId?: string
+    _userId?: string
   ): Promise<User> {
     return await supabaseService.createUser({ name, email, avatar });
   }

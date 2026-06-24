@@ -4,14 +4,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   Alert,
   Image,
   FlatList,
   Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
@@ -22,7 +19,6 @@ import {
   typography,
   spacing,
   borderRadius,
-  shadows,
 } from '../../utils/designSystem';
 
 export default function HouseholdScreen() {
@@ -193,8 +189,8 @@ export default function HouseholdScreen() {
           <PantryCard variant='warm' padding='lg'>
             <Text style={styles.sectionTitle}>🏠 Join or Create Household</Text>
             <Text style={styles.noHouseholdText}>
-              You're not part of a household yet. Join an existing one or create
-              your own!
+              You&apos;re not part of a household yet. Join an existing one or
+              create your own!
             </Text>
 
             <View style={styles.householdActions}>
@@ -538,39 +534,21 @@ export default function HouseholdScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: colors.neutral[50],
+    flex: 1,
   },
   content: {
     flex: 1,
     padding: spacing.md,
   },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
+  householdActions: {
+    gap: spacing.sm,
   },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: spacing.md,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    ...typography.h3,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  profileEmail: {
-    ...typography.bodySmall,
+  householdCode: {
+    ...typography.body,
     color: colors.neutral[600],
+    fontFamily: 'monospace',
+    marginBottom: spacing.xs,
   },
   householdInfo: {
     alignItems: 'center',
@@ -581,84 +559,15 @@ const styles = StyleSheet.create({
     color: colors.neutral[800],
     marginBottom: spacing.xs,
   },
-  householdCode: {
-    ...typography.body,
-    color: colors.neutral[600],
-    fontFamily: 'monospace',
-    marginBottom: spacing.xs,
-  },
-  memberCount: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-  },
-  noHouseholdText: {
-    ...typography.body,
-    color: colors.neutral[600],
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  householdActions: {
-    gap: spacing.sm,
-  },
-  memberCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  memberInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  memberAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: spacing.md,
-  },
-  memberDetails: {
-    flex: 1,
-  },
-  memberName: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  memberEmail: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.xs,
-  },
-  memberRole: {
-    ...typography.caption,
-    color: colors.neutral[500],
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    ...typography.h3,
+  input: {
+    backgroundColor: colors.neutral[100],
+    borderColor: colors.neutral[200],
+    borderRadius: borderRadius.input,
+    borderWidth: 1,
     color: colors.neutral[900],
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: colors.neutral[50],
-  },
-  modalContent: {
-    flex: 1,
-    padding: spacing.md,
+    fontSize: 16,
+    height: 44,
+    paddingHorizontal: spacing.md,
   },
   inputGroup: {
     marginBottom: spacing.md,
@@ -669,25 +578,112 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: spacing.xs,
   },
-  input: {
-    height: 44,
-    backgroundColor: colors.neutral[100],
-    borderRadius: borderRadius.input,
-    paddingHorizontal: spacing.md,
-    fontSize: 16,
-    color: colors.neutral[900],
-    borderWidth: 1,
-    borderColor: colors.neutral[200],
+  memberAvatar: {
+    borderRadius: 24,
+    height: 48,
+    marginRight: spacing.md,
+    width: 48,
+  },
+  memberCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  memberCount: {
+    ...typography.bodySmall,
+    color: colors.neutral[500],
+  },
+  memberDetails: {
+    flex: 1,
+  },
+  memberEmail: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+    marginBottom: spacing.xs,
+  },
+  memberInfo: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flex: 1,
+  },
+  memberName: {
+    ...typography.body,
+    color: colors.neutral[800],
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  memberRole: {
+    ...typography.caption,
+    color: colors.neutral[500],
   },
   modalActions: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.lg,
   },
+  modalContainer: {
+    backgroundColor: colors.neutral[50],
+    flex: 1,
+  },
+  modalContent: {
+    flex: 1,
+    padding: spacing.md,
+  },
   modalPlaceholder: {
     ...typography.body,
     color: colors.neutral[600],
-    textAlign: 'center',
     marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  noHouseholdText: {
+    ...typography.body,
+    color: colors.neutral[600],
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  profileAvatar: {
+    borderRadius: 30,
+    height: 60,
+    marginRight: spacing.md,
+    width: 60,
+  },
+  profileCard: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  profileEmail: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    ...typography.h3,
+    color: colors.neutral[800],
+    marginBottom: spacing.xs,
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.md,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statLabel: {
+    ...typography.caption,
+    color: colors.neutral[600],
+    textAlign: 'center',
+  },
+  statValue: {
+    ...typography.h3,
+    color: colors.neutral[900],
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
 });

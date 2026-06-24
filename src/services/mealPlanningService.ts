@@ -61,7 +61,7 @@ class MealPlanningService {
 
     // Use ALL recipes for meal planning, not just "can cook now"
     // This gives users unlimited menu options regardless of current pantry
-    let allRecipes = [...recipes];
+    const allRecipes = [...recipes];
     console.log(
       'LOG Meal Planning: Using all recipes for unlimited menu options'
     );
@@ -184,10 +184,10 @@ class MealPlanningService {
 
     const mealPlan: MealPlan = {
       id: generateId(),
-      userId: userId,
-      householdId: householdId,
+      userId,
+      householdId,
       weekStartDate: weekStartDate.toISOString(),
-      meals: meals,
+      meals,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -218,7 +218,7 @@ class MealPlanningService {
       console.log(`\n📅 ${day.toUpperCase()}:`);
       Object.entries(dayMeals).forEach(([mealType, meal]) => {
         if (mealType === 'snacks' && Array.isArray(meal)) {
-          meal.forEach((snack, index) => {
+          meal.forEach(snack => {
             console.log(`  🍎 ${mealType}: ${snack.recipeTitle}`);
           });
         } else if (meal && typeof meal === 'object' && 'recipeTitle' in meal) {
@@ -334,7 +334,7 @@ class MealPlanningService {
             ingredientsText.includes(keyword) || title.includes(keyword)
         );
 
-        let diets: string[] = [];
+        const diets: string[] = [];
         if (!hasAnimal) {
           diets.push('vegan');
         } else if (!hasMeat) {
@@ -344,7 +344,7 @@ class MealPlanningService {
         return {
           id: `external-${recipe.id}`,
           title: recipe.title,
-          ingredients: ingredients,
+          ingredients,
           instructions:
             recipe.analyzedInstructions?.[0]?.steps?.map(
               (step: any) => step.step
@@ -396,7 +396,7 @@ class MealPlanningService {
             recipe.cookingMinutes
           ),
           cuisines: recipe.cuisines || [],
-          diets: diets,
+          diets,
           allergens: recipe.allergens || [],
           isFavorite: false,
         };
@@ -812,7 +812,7 @@ class MealPlanningService {
   private filterRecipesForMeal(
     recipes: Recipe[],
     mealType: string,
-    options: MealPlanningOptions
+    _options: MealPlanningOptions
   ): Recipe[] {
     console.log(`LOG Meal Type Filtering: Filtering recipes for ${mealType}`);
 
@@ -973,7 +973,7 @@ class MealPlanningService {
    */
   private generateShoppingListFromMealPlan(
     mealPlan: MealPlan,
-    pantry: any[]
+    _pantry: any[]
   ): ShoppingListItem[] {
     const neededIngredients = new Map<
       string,
@@ -1048,8 +1048,8 @@ class MealPlanningService {
    * Get meal plan for current week
    */
   async getCurrentMealPlan(
-    userId: string,
-    householdId?: string
+    _userId: string,
+    _householdId?: string
   ): Promise<MealPlan | null> {
     // This would fetch from Supabase
     // For now, return null

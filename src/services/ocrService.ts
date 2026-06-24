@@ -104,7 +104,7 @@ class OCRService {
     }
   }
 
-  private async imageToBase64(uri: string): Promise<string> {
+  private async imageToBase64(_uri: string): Promise<string> {
     // This would convert the image URI to base64
     // For now, return empty string
     return '';

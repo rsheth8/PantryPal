@@ -113,7 +113,7 @@ export default function LoginScreen({
             disabled={isLoading}
           >
             <Text style={styles.switchText}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Text style={styles.switchTextBold}>Sign Up</Text>
             </Text>
           </TouchableOpacity>
@@ -130,99 +130,91 @@ export default function LoginScreen({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  form: {
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-  },
   button: {
-    paddingVertical: 16,
-    borderRadius: 8,
     alignItems: 'center',
+    borderRadius: 8,
     marginBottom: 16,
-  },
-  primaryButton: {
-    backgroundColor: '#4CAF50',
-  },
-  googleButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    paddingVertical: 16,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
-  googleButtonText: {
-    color: '#333',
+  container: {
+    backgroundColor: '#fff',
+    flex: 1,
   },
   divider: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
     marginVertical: 20,
   },
   dividerLine: {
+    backgroundColor: '#e0e0e0',
     flex: 1,
     height: 1,
-    backgroundColor: '#e0e0e0',
   },
   dividerText: {
+    color: '#666',
+    fontSize: 14,
     marginHorizontal: 16,
-    color: '#666',
-    fontSize: 14,
-  },
-  switchButton: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  switchText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  switchTextBold: {
-    color: '#4CAF50',
-    fontWeight: '600',
   },
   footer: {
     alignItems: 'center',
     marginTop: 20,
   },
   footerText: {
-    fontSize: 12,
     color: '#999',
-    textAlign: 'center',
+    fontSize: 12,
     lineHeight: 16,
+    textAlign: 'center',
+  },
+  form: {
+    marginBottom: 20,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 16,
+    marginBottom: 16,
+    padding: 16,
+  },
+  primaryButton: {
+    backgroundColor: '#4CAF50',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  subtitle: {
+    color: '#666',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  switchButton: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  switchText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  switchTextBold: {
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
+  title: {
+    color: '#333',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
 });

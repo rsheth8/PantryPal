@@ -14,41 +14,41 @@ export interface SpoonacularRecipe {
   readyInMinutes: number;
   servings: number;
   instructions: string;
-  extendedIngredients: Array<{
+  extendedIngredients: {
     original: string;
     name: string;
     amount: number;
     unit: string;
     id: number;
-  }>;
-  analyzedInstructions: Array<{
-    steps: Array<{
+  }[];
+  analyzedInstructions: {
+    steps: {
       step: string;
-      ingredients: Array<{ name: string; id: number }>;
-      equipment: Array<{ name: string; id: number }>;
-    }>;
-  }>;
+      ingredients: { name: string; id: number }[];
+      equipment: { name: string; id: number }[];
+    }[];
+  }[];
   nutrition: {
-    nutrients: Array<{
+    nutrients: {
       name: string;
       amount: number;
       unit: string;
-    }>;
+    }[];
   };
   cuisines: string[];
   dishTypes: string[];
   diets: string[];
   intolerances: string[];
-  equipment: Array<{
+  equipment: {
     id: number;
     name: string;
     localizedName: string;
     image: string;
-  }>;
+  }[];
   winePairing?: {
     pairedWines: string[];
     pairingText: string;
-    productMatches: Array<{
+    productMatches: {
       id: number;
       title: string;
       description: string;
@@ -58,7 +58,7 @@ export interface SpoonacularRecipe {
       ratingCount: number;
       score: number;
       link: string;
-    }>;
+    }[];
   };
 }
 

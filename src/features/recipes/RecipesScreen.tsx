@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   FlatList,
@@ -19,17 +18,15 @@ import {
   typography,
   spacing,
   borderRadius,
-  shadows,
 } from '../../utils/designSystem';
 
 export default function RecipesScreen() {
-  const { recipes, pantry } = useMultiUserStore();
+  const { recipes } = useMultiUserStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<
     'all' | 'canCook' | 'favorites'
   >('all');
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
 
   const handleRecipePress = (recipe: any) => {
     Alert.alert('Recipe Details', `Viewing ${recipe.title}`);
@@ -302,45 +299,41 @@ export default function RecipesScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: colors.neutral[50],
+    flex: 1,
   },
   content: {
     flex: 1,
     padding: spacing.md,
   },
-  searchContainer: {
-    flexDirection: 'row',
+  emptyState: {
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
   },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    backgroundColor: colors.neutral[100],
-    borderRadius: borderRadius.input,
-    paddingHorizontal: spacing.md,
-    fontSize: 16,
-    color: colors.neutral[900],
-    borderWidth: 1,
-    borderColor: colors.neutral[200],
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
+  emptyStateIcon: {
+    fontSize: 64,
     marginBottom: spacing.md,
   },
-  filterContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  emptyStateSubtext: {
+    ...typography.bodySmall,
+    color: colors.neutral[500],
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    ...typography.h4,
+    color: colors.neutral[600],
+    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   filterChip: {
+    backgroundColor: colors.neutral[100],
+    borderColor: colors.neutral[200],
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.pill,
-    backgroundColor: colors.neutral[100],
-    borderWidth: 1,
-    borderColor: colors.neutral[200],
   },
   filterChipActive: {
     backgroundColor: colors.primary[500],
@@ -354,131 +347,24 @@ const styles = StyleSheet.create({
   filterChipTextActive: {
     color: '#fff',
   },
-  statsGrid: {
+  filterContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    ...typography.h3,
-    color: colors.neutral[900],
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  recipesContainer: {
-    flex: 1,
-    padding: spacing.md,
+    gap: spacing.sm,
   },
   listContent: {
     paddingBottom: spacing.xl,
   },
-  recipeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-  },
-  recipeInfo: {
-    flex: 1,
-  },
-  recipeTitle: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  recipeMeta: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  recipeTime: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  recipeServings: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  recipeStatus: {
-    alignItems: 'flex-end',
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.success + '20',
-  },
-  statusText: {
-    ...typography.caption,
-    color: colors.success,
-    fontWeight: '600',
-  },
   missingBadge: {
-    backgroundColor: colors.warning + '20',
+    backgroundColor: `${colors.warning}20`,
   },
   missingText: {
     ...typography.caption,
     color: colors.warning,
     fontWeight: '600',
   },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
-  },
-  tag: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.primary[100],
-  },
-  tagText: {
-    ...typography.caption,
-    color: colors.primary[700],
-    fontWeight: '500',
-  },
-  moreTags: {
-    ...typography.caption,
-    color: colors.neutral[500],
-    alignSelf: 'center',
-  },
-  recipeActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: spacing.md,
-  },
-  emptyStateText: {
-    ...typography.h4,
-    color: colors.neutral[600],
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  emptyStateSubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
   modalContainer: {
-    flex: 1,
     backgroundColor: colors.neutral[50],
+    flex: 1,
   },
   modalContent: {
     flex: 1,
@@ -487,7 +373,118 @@ const styles = StyleSheet.create({
   modalPlaceholder: {
     ...typography.body,
     color: colors.neutral[600],
-    textAlign: 'center',
     marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  moreTags: {
+    ...typography.caption,
+    alignSelf: 'center',
+    color: colors.neutral[500],
+  },
+  recipeActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  recipeHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  recipeInfo: {
+    flex: 1,
+  },
+  recipeMeta: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  recipeServings: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+  },
+  recipeStatus: {
+    alignItems: 'flex-end',
+  },
+  recipeTime: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+  },
+  recipeTitle: {
+    ...typography.body,
+    color: colors.neutral[800],
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  recipesContainer: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  searchContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  searchInput: {
+    backgroundColor: colors.neutral[100],
+    borderColor: colors.neutral[200],
+    borderRadius: borderRadius.input,
+    borderWidth: 1,
+    color: colors.neutral[900],
+    flex: 1,
+    fontSize: 16,
+    height: 44,
+    paddingHorizontal: spacing.md,
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.md,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statLabel: {
+    ...typography.caption,
+    color: colors.neutral[600],
+    textAlign: 'center',
+  },
+  statValue: {
+    ...typography.h3,
+    color: colors.neutral[900],
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statusBadge: {
+    backgroundColor: `${colors.success}20`,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  statusText: {
+    ...typography.caption,
+    color: colors.success,
+    fontWeight: '600',
+  },
+  tag: {
+    backgroundColor: colors.primary[100],
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  tagText: {
+    ...typography.caption,
+    color: colors.primary[700],
+    fontWeight: '500',
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
   },
 });

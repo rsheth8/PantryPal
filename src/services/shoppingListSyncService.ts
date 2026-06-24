@@ -135,7 +135,7 @@ class ShoppingListSyncService {
   /**
    * Suggest quantity
    */
-  private suggestQuantity(ingredientName: string, category: string): number {
+  private suggestQuantity(_ingredientName: string, _category: string): number {
     // Simple quantity suggestions
     return 1;
   }
@@ -143,7 +143,7 @@ class ShoppingListSyncService {
   /**
    * Suggest unit
    */
-  private suggestUnit(ingredientName: string, category: string): string {
+  private suggestUnit(ingredientName: string, _category: string): string {
     const name = ingredientName.toLowerCase();
 
     if (
@@ -167,8 +167,8 @@ class ShoppingListSyncService {
    * Calculate priority
    */
   private calculatePriority(
-    ingredientName: string,
-    pantry: GroceryItem[]
+    _ingredientName: string,
+    _pantry: GroceryItem[]
   ): 'high' | 'medium' | 'low' {
     // Simple priority calculation
     return 'medium';
@@ -189,7 +189,7 @@ class ShoppingListSyncService {
       seen.get(key)!.push(item);
     });
 
-    seen.forEach((items, key) => {
+    seen.forEach(items => {
       if (items.length > 1) {
         duplicates.push(items);
       }

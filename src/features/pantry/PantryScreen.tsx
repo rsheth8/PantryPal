@@ -19,12 +19,10 @@ import {
   typography,
   spacing,
   borderRadius,
-  shadows,
-  pantryTokens,
 } from '../../utils/designSystem';
 
 export default function PantryScreen() {
-  const { pantry, currentUser } = useMultiUserStore();
+  const { pantry } = useMultiUserStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -374,47 +372,13 @@ export default function PantryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral[50],
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    height: 44,
-    backgroundColor: colors.neutral[100],
-    borderRadius: borderRadius.input,
-    paddingHorizontal: spacing.md,
-    fontSize: 16,
-    color: colors.neutral[900],
-    borderWidth: 1,
-    borderColor: colors.neutral[200],
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
   categoryChip: {
+    backgroundColor: colors.neutral[100],
+    borderColor: colors.neutral[200],
+    borderRadius: borderRadius.pill,
+    borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.pill,
-    backgroundColor: colors.neutral[100],
-    borderWidth: 1,
-    borderColor: colors.neutral[200],
   },
   categoryChipActive: {
     backgroundColor: colors.primary[500],
@@ -428,17 +392,131 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: '#fff',
   },
-  sortContainer: {
+  categoryContainer: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
+  container: {
+    backgroundColor: colors.neutral[50],
+    flex: 1,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  emptyStateIcon: {
+    fontSize: 64,
+    marginBottom: spacing.md,
+  },
+  emptyStateSubtext: {
+    ...typography.bodySmall,
+    color: colors.neutral[500],
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    ...typography.h4,
+    color: colors.neutral[600],
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  expirationInfo: {
+    marginBottom: spacing.sm,
+  },
+  expirationText: {
+    ...typography.bodySmall,
+    fontWeight: '500',
+  },
+  itemActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  itemCategory: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+  },
+  itemHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemName: {
+    ...typography.body,
+    color: colors.neutral[800],
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  itemQuantity: {
+    alignItems: 'flex-end',
+  },
+  itemsContainer: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  listContent: {
+    paddingBottom: spacing.xl,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  modalContainer: {
+    backgroundColor: colors.neutral[50],
+    flex: 1,
+  },
+  modalContent: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  modalPlaceholder: {
+    ...typography.body,
+    color: colors.neutral[600],
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  optionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  quantityText: {
+    ...typography.body,
+    color: colors.primary[600],
+    fontWeight: '600',
+  },
+  searchContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  searchInput: {
+    backgroundColor: colors.neutral[100],
+    borderColor: colors.neutral[200],
+    borderRadius: borderRadius.input,
+    borderWidth: 1,
+    color: colors.neutral[900],
+    flex: 1,
+    fontSize: 16,
+    height: 44,
+    paddingHorizontal: spacing.md,
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.md,
+  },
   sortChip: {
+    backgroundColor: colors.neutral[100],
+    borderColor: colors.neutral[200],
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.neutral[100],
-    borderWidth: 1,
-    borderColor: colors.neutral[200],
   },
   sortChipActive: {
     backgroundColor: colors.secondary[500],
@@ -452,87 +530,7 @@ const styles = StyleSheet.create({
   sortChipTextActive: {
     color: '#fff',
   },
-  itemsContainer: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  listContent: {
-    paddingBottom: spacing.xl,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  itemCategory: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  itemQuantity: {
-    alignItems: 'flex-end',
-  },
-  quantityText: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.primary[600],
-  },
-  expirationInfo: {
-    marginBottom: spacing.sm,
-  },
-  expirationText: {
-    ...typography.bodySmall,
-    fontWeight: '500',
-  },
-  itemActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: spacing.md,
-  },
-  emptyStateText: {
-    ...typography.h4,
-    color: colors.neutral[600],
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  emptyStateSubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: colors.neutral[50],
-  },
-  modalContent: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  modalPlaceholder: {
-    ...typography.body,
-    color: colors.neutral[600],
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  modalActions: {
+  sortContainer: {
     flexDirection: 'row',
     gap: spacing.sm,
   },

@@ -5,9 +5,7 @@ import {
   GroceryItem,
   Recipe,
   ShoppingListItem,
-  UserPreferences,
 } from '../types';
-import { generateId } from '../utils/helpers';
 import { isDevMode, getCurrentDevUser } from '../config/dev';
 
 import { SUPABASE_CONFIG } from '../config/supabase';
@@ -96,12 +94,12 @@ export interface SupabaseRecipe {
   };
   original_servings?: number;
   scaled_servings?: number;
-  scaled_ingredients?: Array<{
+  scaled_ingredients?: {
     name: string;
     amount: number;
     unit: string;
     originalAmount: number;
-  }>;
+  }[];
 }
 
 export interface SupabaseShoppingListItem {
@@ -378,7 +376,7 @@ class SupabaseService {
     userId: string,
     householdId?: string
   ): Promise<GroceryItem[]> {
-    let query = supabase
+    const query = supabase
       .from('grocery_items')
       .select('*')
       .or(
@@ -472,7 +470,7 @@ class SupabaseService {
     userId: string,
     householdId?: string
   ): Promise<ShoppingListItem[]> {
-    let query = supabase
+    const query = supabase
       .from('shopping_list_items')
       .select('*')
       .or(
@@ -558,7 +556,7 @@ class SupabaseService {
 
   // Recipes
   async getRecipes(userId: string, householdId?: string): Promise<Recipe[]> {
-    let query = supabase
+    const query = supabase
       .from('recipes')
       .select('*')
       .or(
