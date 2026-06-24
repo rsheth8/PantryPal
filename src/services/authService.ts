@@ -1,13 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { User } from '../types';
-import { generateId } from '../utils/helpers';
-import {
-  DEV_MODE,
-  isDevMode,
-  getCurrentDevUser,
-  initializeDevUser,
-} from '../config/dev';
+import { isDevMode, getCurrentDevUser, initializeDevUser } from '../config/dev';
 
 import { SUPABASE_CONFIG } from '../config/supabase';
 

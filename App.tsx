@@ -8,7 +8,7 @@ import AuthNavigator from './src/navigation/AuthNavigator';
 import { authService } from './src/services/authService';
 import { useMultiUserStore } from './src/store/useMultiUserStore';
 import { notificationService } from './src/services/notificationService';
-import { isDevMode, DEV_MODE } from './src/config/dev';
+import { isDevMode } from './src/config/dev';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -67,7 +67,7 @@ export default function App() {
     return (
       <SafeAreaProvider>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4CAF50" />
+          <ActivityIndicator size='large' color='#4CAF50' />
         </View>
       </SafeAreaProvider>
     );
@@ -88,9 +88,9 @@ export default function App() {
 
 const styles = StyleSheet.create({
   loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
+    flex: 1,
+    justifyContent: 'center',
   },
-}); 
+});

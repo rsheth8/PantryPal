@@ -1,15 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-  shadows,
-} from '../../utils/designSystem';
+import { colors, typography, spacing } from '../../utils/designSystem';
 
 export default function ScannerScreen() {
   const [isScanning, setIsScanning] = useState(false);
@@ -139,37 +133,12 @@ export default function ScannerScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: colors.neutral[50],
+    flex: 1,
   },
   content: {
     flex: 1,
     padding: spacing.md,
-  },
-  scannerPreview: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  scannerIcon: {
-    fontSize: 64,
-    marginBottom: spacing.md,
-  },
-  scannerText: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  scannerSubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
   },
   optionsGrid: {
     gap: spacing.md,
@@ -178,37 +147,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.lg,
   },
-  recentTitle: {
-    ...typography.h4,
-    color: colors.neutral[700],
-    marginBottom: spacing.xs,
-  },
   recentSubtext: {
     ...typography.bodySmall,
     color: colors.neutral[500],
     textAlign: 'center',
   },
-  tipCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  recentTitle: {
+    ...typography.h4,
+    color: colors.neutral[700],
+    marginBottom: spacing.xs,
+  },
+  scannerIcon: {
+    fontSize: 64,
     marginBottom: spacing.md,
+  },
+  scannerPreview: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  scannerSubtext: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+    textAlign: 'center',
+  },
+  scannerText: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.md,
+  },
+  tipCard: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    marginBottom: spacing.md,
+  },
+  tipContent: {
+    flex: 1,
   },
   tipIcon: {
     fontSize: 24,
     marginRight: spacing.sm,
     marginTop: 2,
   },
-  tipContent: {
-    flex: 1,
-  },
-  tipTitle: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
   tipText: {
     ...typography.bodySmall,
     color: colors.neutral[600],
+  },
+  tipTitle: {
+    ...typography.body,
+    color: colors.neutral[800],
+    fontWeight: '600',
+    marginBottom: spacing.xs,
   },
 });

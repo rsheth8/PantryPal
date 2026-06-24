@@ -1,14 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import GradientBackground from './GradientBackground';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-  shadows,
-  pantryTokens,
-} from '../utils/designSystem';
+import { typography, spacing, shadows } from '../utils/designSystem';
 
 interface PantryHeaderProps {
   title: string;
@@ -84,70 +77,70 @@ export default function PantryHeader({
 }
 
 const styles = StyleSheet.create({
+  backButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+    ...shadows.sm,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  childrenContainer: {
+    marginTop: spacing.md,
+  },
   container: {
-    paddingTop: spacing.xl + 20, // Account for status bar
     paddingBottom: spacing.lg,
+    paddingTop: spacing.xl + 20, // Account for status bar
     ...shadows.lg,
   },
   content: {
     paddingHorizontal: spacing.lg,
   },
-  topRow: {
-    flexDirection: 'row',
+  rightAction: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
+    borderRadius: 20,
+    height: 40,
     justifyContent: 'center',
+    width: 40,
     ...shadows.sm,
   },
-  backButtonText: {
-    fontSize: 20,
+  rightActionText: {
     color: '#fff',
-    fontWeight: '600',
-  },
-  titleContainer: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-  },
-  title: {
-    ...typography.h2,
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 18,
   },
   subtitle: {
     ...typography.bodySmall,
     color: '#fff',
-    textAlign: 'center',
     opacity: 0.9,
+    textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  rightAction: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  rightActionText: {
-    fontSize: 18,
+  title: {
+    ...typography.h2,
     color: '#fff',
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  childrenContainer: {
-    marginTop: spacing.md,
+  titleContainer: {
+    alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: spacing.md,
+  },
+  topRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
 });

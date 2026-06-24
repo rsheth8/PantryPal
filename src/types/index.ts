@@ -84,12 +84,12 @@ export interface Recipe {
   // Scaling support
   originalServings?: number;
   scaledServings?: number;
-  scaledIngredients?: Array<{
+  scaledIngredients?: {
     name: string;
     amount: number;
     unit: string;
     originalAmount: number;
-  }>;
+  }[];
 
   // New enhancements
   difficulty?: 'easy' | 'medium' | 'hard';
@@ -194,7 +194,14 @@ export interface DietaryPreferences {
 
   // FLEXIBLE - Can be relaxed
   cuisines: string[]; // ['italian', 'mexican', 'asian', 'mediterranean', 'indian', 'american']
-  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'easy' | 'medium' | 'hard' | 'any';
+  difficulty:
+    | 'beginner'
+    | 'intermediate'
+    | 'advanced'
+    | 'easy'
+    | 'medium'
+    | 'hard'
+    | 'any';
   maxPrepTime?: number; // in minutes
   maxCookTime?: number; // in minutes
 
