@@ -5,12 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
+  Share,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
+import { buildBackupJson } from '../../utils/exportData';
 import {
   colors,
   typography,
@@ -126,6 +127,29 @@ export default function AnalyticsScreen() {
       return acc;
     }, {})
   ).sort((a, b) => b[1] - a[1]);
+
+  const handleExport = () =>
+    Share.share({
+      title: 'PantryPal Backup',
+      message: buildBackupJson({ pantry, shoppingList, recipes }),
+    }).catch(() => undefined);
+
+  const handleReport = () => {
+    const report = [
+      'PantryPal Report',
+      `Generated: ${new Date().toLocaleString()}`,
+      '',
+      `Pantry items: ${analyticsData.totalItems}`,
+      `Pantry value: ${formatMoney(analyticsData.totalSpent)}`,
+      `Expiring soon: ${analyticsData.expiringSoon}`,
+      `Expired: ${analyticsData.expiredItems} (${formatMoney(expiredValue)} wasted)`,
+      `Recipes: ${analyticsData.totalRecipes} (${analyticsData.canCookNow} cookable now)`,
+      `Shopping: ${analyticsData.completedShopping}/${analyticsData.shoppingItems} done, est ${formatMoney(shoppingEstimated)}`,
+    ].join('\n');
+    Share.share({ title: 'PantryPal Report', message: report }).catch(
+      () => undefined
+    );
+  };
 
   const renderOverviewTab = () => (
     <View>
@@ -496,7 +520,7 @@ export default function AnalyticsScreen() {
           <View style={styles.actionsGrid}>
             <PantryButton
               title='Export Data'
-              onPress={() => Alert.alert('Export', 'Export analytics data')}
+              onPress={handleExport}
               variant='outline'
               size='sm'
               icon='📤'
@@ -504,7 +528,7 @@ export default function AnalyticsScreen() {
             />
             <PantryButton
               title='Generate Report'
-              onPress={() => Alert.alert('Report', 'Generate detailed report')}
+              onPress={handleReport}
               variant='outline'
               size='sm'
               icon='📋'

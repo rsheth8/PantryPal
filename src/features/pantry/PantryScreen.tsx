@@ -8,12 +8,14 @@ import {
   TextInput,
   Alert,
   FlatList,
+  Share,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import AddItemModal from '../../components/AddItemModal';
+import { pantryToCsv } from '../../utils/exportData';
 import {
   colors,
   typography,
@@ -52,17 +54,28 @@ export default function PantryScreen() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'CSV',
-        onPress: () => Alert.alert('Export', 'CSV export coming soon!'),
+        onPress: () =>
+          Share.share({
+            title: 'PantryPal Pantry',
+            message: pantryToCsv(pantry),
+          }).catch(() => undefined),
       },
       {
         text: 'JSON',
-        onPress: () => Alert.alert('Export', 'JSON export coming soon!'),
+        onPress: () =>
+          Share.share({
+            title: 'PantryPal Pantry',
+            message: JSON.stringify(pantry, null, 2),
+          }).catch(() => undefined),
       },
     ]);
   };
 
   const handleImportData = () => {
-    Alert.alert('Import Data', 'Import functionality coming soon!');
+    Alert.alert(
+      'Import Data',
+      'Open Settings → Import Data to paste a JSON export into your pantry.'
+    );
   };
 
   const handleBulkActions = () => {
