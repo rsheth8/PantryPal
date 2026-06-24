@@ -13,16 +13,18 @@ import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
   shadows,
 } from '../../utils/designSystem';
+import { useTheme, ThemeColors } from '../../theme';
 
 export default function DashboardScreen() {
   const { pantry, recipes, shoppingList, currentUser, currentHousehold } =
     useMultiUserStore();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [stats, setStats] = useState({
     totalItems: 0,
     expiringSoon: 0,
@@ -220,117 +222,118 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  actionIcon: {
-    fontSize: 24,
-  },
-  actionIconContainer: {
-    alignItems: 'center',
-    borderRadius: 28,
-    height: 56,
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-    width: 56,
-  },
-  actionTitle: {
-    ...typography.bodySmall,
-    color: colors.neutral[700],
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  activityItem: {
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-  activitySubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-    textAlign: 'center',
-  },
-  activityText: {
-    ...typography.body,
-    color: colors.neutral[600],
-    marginBottom: spacing.xs,
-  },
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  householdCode: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    fontFamily: 'monospace',
-    marginBottom: spacing.md,
-  },
-  householdInfo: {
-    alignItems: 'center',
-  },
-  householdName: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  quickActionCard: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: borderRadius.card,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    width: '48%',
-    ...shadows.sm,
-    borderColor: colors.primary[100],
-    borderWidth: 1,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  statCard: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: borderRadius.card,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    width: '48%',
-    ...shadows.sm,
-    borderColor: colors.neutral[100],
-    borderWidth: 1,
-  },
-  statIcon: {
-    fontSize: 20,
-  },
-  statIconContainer: {
-    alignItems: 'center',
-    borderRadius: 24,
-    height: 48,
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-    width: 48,
-  },
-  statTitle: {
-    ...typography.caption,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  statValue: {
-    ...typography.h3,
-    color: colors.neutral[900],
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    actionIcon: {
+      fontSize: 24,
+    },
+    actionIconContainer: {
+      alignItems: 'center',
+      borderRadius: 28,
+      height: 56,
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+      width: 56,
+    },
+    actionTitle: {
+      ...typography.bodySmall,
+      color: colors.neutral[700],
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    activityItem: {
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+    },
+    activitySubtext: {
+      ...typography.bodySmall,
+      color: colors.neutral[500],
+      textAlign: 'center',
+    },
+    activityText: {
+      ...typography.body,
+      color: colors.neutral[600],
+      marginBottom: spacing.xs,
+    },
+    container: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    householdCode: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+      fontFamily: 'monospace',
+      marginBottom: spacing.md,
+    },
+    householdInfo: {
+      alignItems: 'center',
+    },
+    householdName: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.xs,
+    },
+    quickActionCard: {
+      alignItems: 'center',
+      backgroundColor: '#fff',
+      borderRadius: borderRadius.card,
+      marginBottom: spacing.md,
+      padding: spacing.md,
+      width: '48%',
+      ...shadows.sm,
+      borderColor: colors.primary[100],
+      borderWidth: 1,
+    },
+    quickActionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.md,
+    },
+    statCard: {
+      alignItems: 'center',
+      backgroundColor: '#fff',
+      borderRadius: borderRadius.card,
+      marginBottom: spacing.md,
+      padding: spacing.md,
+      width: '48%',
+      ...shadows.sm,
+      borderColor: colors.neutral[100],
+      borderWidth: 1,
+    },
+    statIcon: {
+      fontSize: 20,
+    },
+    statIconContainer: {
+      alignItems: 'center',
+      borderRadius: 24,
+      height: 48,
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+      width: 48,
+    },
+    statTitle: {
+      ...typography.caption,
+      color: colors.neutral[600],
+      textAlign: 'center',
+    },
+    statValue: {
+      ...typography.h3,
+      color: colors.neutral[900],
+      fontWeight: '700',
+      marginBottom: spacing.xs,
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+    },
+  });

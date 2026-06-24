@@ -35,8 +35,8 @@ A modern, collaborative pantry management app built with React Native and Expo. 
 
 ### 📱 **Smart Scanning**
 
-- Barcode scanning for quick item addition
-- OCR receipt scanning (coming soon)
+- Barcode scanning (expo-camera) with Open Food Facts product lookup
+- Receipt OCR via photo capture (Google Cloud Vision, with a mock fallback)
 - Manual item entry
 
 ### 🍳 **Meal Planning**

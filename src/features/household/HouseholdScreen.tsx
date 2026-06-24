@@ -14,12 +14,8 @@ import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-} from '../../utils/designSystem';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { useTheme, ThemeColors } from '../../theme';
 
 export default function HouseholdScreen() {
   const {
@@ -31,6 +27,8 @@ export default function HouseholdScreen() {
     updateUserProfile,
   } = useMultiUserStore();
 
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileUpdates, setProfileUpdates] = useState({
     name: currentUser?.name || '',
@@ -532,158 +530,159 @@ export default function HouseholdScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  householdActions: {
-    gap: spacing.sm,
-  },
-  householdCode: {
-    ...typography.body,
-    color: colors.neutral[600],
-    fontFamily: 'monospace',
-    marginBottom: spacing.xs,
-  },
-  householdInfo: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  householdName: {
-    ...typography.h3,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  input: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
-    color: colors.neutral[900],
-    fontSize: 16,
-    height: 44,
-    paddingHorizontal: spacing.md,
-  },
-  inputGroup: {
-    marginBottom: spacing.md,
-  },
-  inputLabel: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '500',
-    marginBottom: spacing.xs,
-  },
-  memberAvatar: {
-    borderRadius: 24,
-    height: 48,
-    marginRight: spacing.md,
-    width: 48,
-  },
-  memberCard: {
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  memberCount: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-  },
-  memberDetails: {
-    flex: 1,
-  },
-  memberEmail: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.xs,
-  },
-  memberInfo: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flex: 1,
-  },
-  memberName: {
-    ...typography.body,
-    color: colors.neutral[800],
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  memberRole: {
-    ...typography.caption,
-    color: colors.neutral[500],
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  modalContainer: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  modalContent: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  modalPlaceholder: {
-    ...typography.body,
-    color: colors.neutral[600],
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  noHouseholdText: {
-    ...typography.body,
-    color: colors.neutral[600],
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  profileAvatar: {
-    borderRadius: 30,
-    height: 60,
-    marginRight: spacing.md,
-    width: 60,
-  },
-  profileCard: {
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  profileEmail: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    ...typography.h3,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  statValue: {
-    ...typography.h3,
-    color: colors.neutral[900],
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    householdActions: {
+      gap: spacing.sm,
+    },
+    householdCode: {
+      ...typography.body,
+      color: colors.neutral[600],
+      fontFamily: 'monospace',
+      marginBottom: spacing.xs,
+    },
+    householdInfo: {
+      alignItems: 'center',
+      marginBottom: spacing.lg,
+    },
+    householdName: {
+      ...typography.h3,
+      color: colors.neutral[800],
+      marginBottom: spacing.xs,
+    },
+    input: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.input,
+      borderWidth: 1,
+      color: colors.neutral[900],
+      fontSize: 16,
+      height: 44,
+      paddingHorizontal: spacing.md,
+    },
+    inputGroup: {
+      marginBottom: spacing.md,
+    },
+    inputLabel: {
+      ...typography.body,
+      color: colors.neutral[700],
+      fontWeight: '500',
+      marginBottom: spacing.xs,
+    },
+    memberAvatar: {
+      borderRadius: 24,
+      height: 48,
+      marginRight: spacing.md,
+      width: 48,
+    },
+    memberCard: {
+      alignItems: 'center',
+      flexDirection: 'row',
+    },
+    memberCount: {
+      ...typography.bodySmall,
+      color: colors.neutral[500],
+    },
+    memberDetails: {
+      flex: 1,
+    },
+    memberEmail: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+      marginBottom: spacing.xs,
+    },
+    memberInfo: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      flex: 1,
+    },
+    memberName: {
+      ...typography.body,
+      color: colors.neutral[800],
+      fontWeight: '600',
+      marginBottom: spacing.xs,
+    },
+    memberRole: {
+      ...typography.caption,
+      color: colors.neutral[500],
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.lg,
+    },
+    modalContainer: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    modalContent: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    modalPlaceholder: {
+      ...typography.body,
+      color: colors.neutral[600],
+      marginBottom: spacing.lg,
+      textAlign: 'center',
+    },
+    noHouseholdText: {
+      ...typography.body,
+      color: colors.neutral[600],
+      marginBottom: spacing.lg,
+      textAlign: 'center',
+    },
+    profileAvatar: {
+      borderRadius: 30,
+      height: 60,
+      marginRight: spacing.md,
+      width: 60,
+    },
+    profileCard: {
+      alignItems: 'center',
+      flexDirection: 'row',
+    },
+    profileEmail: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+    },
+    profileInfo: {
+      flex: 1,
+    },
+    profileName: {
+      ...typography.h3,
+      color: colors.neutral[800],
+      marginBottom: spacing.xs,
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.md,
+    },
+    statItem: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    statLabel: {
+      ...typography.caption,
+      color: colors.neutral[600],
+      textAlign: 'center',
+    },
+    statValue: {
+      ...typography.h3,
+      color: colors.neutral[900],
+      fontWeight: '700',
+      marginBottom: spacing.xs,
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+  });

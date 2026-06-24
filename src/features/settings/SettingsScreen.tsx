@@ -6,22 +6,73 @@ import {
   ScrollView,
   Switch,
   Alert,
+  Modal,
+  TextInput,
+  Share,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
-import { colors, typography, spacing } from '../../utils/designSystem';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { useTheme, ThemeColors } from '../../theme';
+import {
+  pantryToCsv,
+  buildBackupJson,
+  parseBackupItems,
+} from '../../utils/exportData';
 
 interface SettingsScreenProps {
   onSignOut?: () => void;
 }
 
 export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
-  const { currentUser, currentHousehold, leaveHousehold } = useMultiUserStore();
+  const {
+    currentUser,
+    currentHousehold,
+    leaveHousehold,
+    pantry,
+    shoppingList,
+    recipes,
+    addGroceryItem,
+  } = useMultiUserStore();
+  const { colors, isDark, setMode } = useTheme();
+  const styles = makeStyles(colors);
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
   const [autoSyncEnabled, setAutoSyncEnabled] = React.useState(true);
+  const [importVisible, setImportVisible] = React.useState(false);
+  const [importText, setImportText] = React.useState('');
+
+  // Load persisted app settings on mount
+  React.useEffect(() => {
+    AsyncStorage.getItem('app_settings').then(raw => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        if (typeof saved.notifications === 'boolean')
+          setNotificationsEnabled(saved.notifications);
+        if (typeof saved.autoSync === 'boolean')
+          setAutoSyncEnabled(saved.autoSync);
+      } catch {
+        // ignore malformed settings
+      }
+    });
+  }, []);
+
+  const persistSettings = (patch: {
+    notifications?: boolean;
+    autoSync?: boolean;
+  }) => {
+    const next = {
+      notifications: notificationsEnabled,
+      autoSync: autoSyncEnabled,
+      ...patch,
+    };
+    AsyncStorage.setItem('app_settings', JSON.stringify(next)).catch(
+      () => undefined
+    );
+  };
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -55,11 +106,54 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   };
 
   const handleExportData = () => {
-    Alert.alert('Export Data', 'Export functionality coming soon!');
+    Alert.alert('Export Data', 'Choose a format to export and share.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Pantry CSV',
+        onPress: () =>
+          Share.share({
+            title: 'PantryPal Export',
+            message: pantryToCsv(pantry),
+          }).catch(() => undefined),
+      },
+      {
+        text: 'Full Backup (JSON)',
+        onPress: () =>
+          Share.share({
+            title: 'PantryPal Backup',
+            message: buildBackupJson({ pantry, shoppingList, recipes }),
+          }).catch(() => undefined),
+      },
+    ]);
   };
 
   const handleImportData = () => {
-    Alert.alert('Import Data', 'Import functionality coming soon!');
+    setImportText('');
+    setImportVisible(true);
+  };
+
+  const handleRunImport = async () => {
+    try {
+      const items = parseBackupItems(importText);
+      if (items.length === 0) {
+        Alert.alert('Import', 'No valid pantry items found in that data.');
+        return;
+      }
+      for (const item of items) {
+        await addGroceryItem(item);
+      }
+      setImportVisible(false);
+      setImportText('');
+      Alert.alert(
+        'Import complete',
+        `Added ${items.length} item${items.length !== 1 ? 's' : ''} to your pantry.`
+      );
+    } catch (error) {
+      Alert.alert(
+        'Import failed',
+        'Could not parse that data. Paste a valid PantryPal JSON export.'
+      );
+    }
   };
 
   const handleClearData = () => {
@@ -117,7 +211,10 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
             </View>
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={value => {
+                setNotificationsEnabled(value);
+                persistSettings({ notifications: value });
+              }}
               trackColor={{
                 false: colors.neutral[300],
                 true: colors.primary[300],
@@ -134,15 +231,13 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
               <Text style={styles.settingSubtitle}>Switch to dark theme</Text>
             </View>
             <Switch
-              value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
+              value={isDark}
+              onValueChange={value => setMode(value ? 'dark' : 'light')}
               trackColor={{
                 false: colors.neutral[300],
                 true: colors.primary[300],
               }}
-              thumbColor={
-                darkModeEnabled ? colors.primary[500] : colors.neutral[400]
-              }
+              thumbColor={isDark ? colors.primary[500] : colors.neutral[400]}
             />
           </View>
 
@@ -155,7 +250,10 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
             </View>
             <Switch
               value={autoSyncEnabled}
-              onValueChange={setAutoSyncEnabled}
+              onValueChange={value => {
+                setAutoSyncEnabled(value);
+                persistSettings({ autoSync: value });
+              }}
               trackColor={{
                 false: colors.neutral[300],
                 true: colors.primary[300],
@@ -250,85 +348,162 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
           </View>
         </PantryCard>
       </ScrollView>
+
+      {/* Import Data Modal */}
+      <Modal
+        visible={importVisible}
+        animationType='slide'
+        presentationStyle='pageSheet'
+      >
+        <View style={styles.importModalContainer}>
+          <PantryHeader
+            title='Import Data'
+            subtitle='Paste a PantryPal JSON export'
+            gradient='twilight'
+            showBackButton
+            onBackPress={() => setImportVisible(false)}
+          />
+          <View style={styles.importContent}>
+            <PantryCard variant='elevated' padding='lg'>
+              <Text style={styles.importHint}>
+                Paste a JSON export (or an array of items). Each item is added
+                to your pantry.
+              </Text>
+              <TextInput
+                style={styles.importInput}
+                placeholder='{ "pantry": [ ... ] }'
+                value={importText}
+                onChangeText={setImportText}
+                multiline
+                placeholderTextColor={colors.neutral[400]}
+              />
+              <View style={styles.importActions}>
+                <PantryButton
+                  title='Cancel'
+                  onPress={() => setImportVisible(false)}
+                  variant='outline'
+                  size='md'
+                />
+                <PantryButton
+                  title='Import'
+                  onPress={handleRunImport}
+                  variant='primary'
+                  size='md'
+                />
+              </View>
+            </PantryCard>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  householdDescription: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  householdName: {
-    ...typography.bodySmall,
-    color: colors.primary[600],
-    fontWeight: '600',
-  },
-  infoItem: {
-    alignItems: 'center',
-    borderBottomColor: colors.neutral[100],
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  infoLabel: {
-    ...typography.body,
-    color: colors.neutral[700],
-  },
-  infoValue: {
-    ...typography.body,
-    color: colors.neutral[600],
-    fontWeight: '500',
-  },
-  profileEmail: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.xs,
-  },
-  profileInfo: {
-    alignItems: 'center',
-  },
-  profileName: {
-    ...typography.h3,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  settingContent: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  settingItem: {
-    alignItems: 'center',
-    borderBottomColor: colors.neutral[100],
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  settingSubtitle: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  settingTitle: {
-    ...typography.body,
-    color: colors.neutral[800],
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    householdDescription: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+      marginBottom: spacing.md,
+      textAlign: 'center',
+    },
+    householdName: {
+      ...typography.bodySmall,
+      color: colors.primary[600],
+      fontWeight: '600',
+    },
+    importActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    importContent: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    importHint: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+      marginBottom: spacing.sm,
+    },
+    importInput: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.input,
+      borderWidth: 1,
+      color: colors.neutral[900],
+      fontSize: 14,
+      height: 180,
+      padding: spacing.md,
+      textAlignVertical: 'top',
+    },
+    importModalContainer: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    infoItem: {
+      alignItems: 'center',
+      borderBottomColor: colors.neutral[100],
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+    },
+    infoLabel: {
+      ...typography.body,
+      color: colors.neutral[700],
+    },
+    infoValue: {
+      ...typography.body,
+      color: colors.neutral[600],
+      fontWeight: '500',
+    },
+    profileEmail: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+      marginBottom: spacing.xs,
+    },
+    profileInfo: {
+      alignItems: 'center',
+    },
+    profileName: {
+      ...typography.h3,
+      color: colors.neutral[800],
+      marginBottom: spacing.xs,
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.md,
+    },
+    settingContent: {
+      flex: 1,
+      marginRight: spacing.md,
+    },
+    settingItem: {
+      alignItems: 'center',
+      borderBottomColor: colors.neutral[100],
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+    },
+    settingSubtitle: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+    },
+    settingTitle: {
+      ...typography.body,
+      color: colors.neutral[800],
+      fontWeight: '600',
+      marginBottom: spacing.xs,
+    },
+  });

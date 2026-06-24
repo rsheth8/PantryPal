@@ -45,7 +45,9 @@ module.exports = {
     'react-hooks/exhaustive-deps': 'warn',
 
     // React Native rules
-    'react-native/no-unused-styles': 'error',
+    // Disabled: incompatible with the themed `makeStyles(colors)` factory
+    // pattern (the rule only understands a module-level StyleSheet.create).
+    'react-native/no-unused-styles': 'off',
     'react-native/split-platform-components': 'error',
     'react-native/no-inline-styles': 'warn',
     'react-native/no-color-literals': 'warn',

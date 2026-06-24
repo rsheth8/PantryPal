@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,22 +7,22 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Modal,
   FlatList,
+  Share,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-} from '../../utils/designSystem';
+import AddItemModal from '../../components/AddItemModal';
+import { pantryToCsv } from '../../utils/exportData';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { useTheme, ThemeColors } from '../../theme';
 
 export default function PantryScreen() {
-  const { pantry } = useMultiUserStore();
+  const { pantry, markItemAsUsed } = useMultiUserStore();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -30,11 +30,6 @@ export default function PantryScreen() {
   const [sortBy, setSortBy] = useState<'name' | 'expiration' | 'category'>(
     'name'
   );
-
-  // Debug: Log the current state
-  useEffect(() => {
-    console.log('PantryScreen: Current pantry items:', pantry.length);
-  }, [pantry]);
 
   const handleMergeDuplicates = () => {
     Alert.alert(
@@ -57,17 +52,28 @@ export default function PantryScreen() {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'CSV',
-        onPress: () => Alert.alert('Export', 'CSV export coming soon!'),
+        onPress: () =>
+          Share.share({
+            title: 'PantryPal Pantry',
+            message: pantryToCsv(pantry),
+          }).catch(() => undefined),
       },
       {
         text: 'JSON',
-        onPress: () => Alert.alert('Export', 'JSON export coming soon!'),
+        onPress: () =>
+          Share.share({
+            title: 'PantryPal Pantry',
+            message: JSON.stringify(pantry, null, 2),
+          }).catch(() => undefined),
       },
     ]);
   };
 
   const handleImportData = () => {
-    Alert.alert('Import Data', 'Import functionality coming soon!');
+    Alert.alert(
+      'Import Data',
+      'Open Settings → Import Data to paste a JSON export into your pantry.'
+    );
   };
 
   const handleBulkActions = () => {
@@ -78,13 +84,9 @@ export default function PantryScreen() {
     setShowAddModal(true);
   };
 
-  const handleCloseAddModal = () => {
-    setShowAddModal(false);
-  };
-
-  const handleSaveItem = () => {
-    Alert.alert('Success', 'Item added to pantry!');
-    setShowAddModal(false);
+  const handleUseItem = (itemId: string, itemName: string) => {
+    markItemAsUsed(itemId);
+    Alert.alert('Item Used', `Marked ${itemName} as used`);
   };
 
   // Filter and sort items
@@ -144,7 +146,7 @@ export default function PantryScreen() {
       <View style={styles.itemActions}>
         <PantryButton
           title='Use'
-          onPress={() => Alert.alert('Use Item', `Marked ${item.name} as used`)}
+          onPress={() => handleUseItem(item.id, item.name)}
           variant='success'
           size='sm'
         />
@@ -330,208 +332,158 @@ export default function PantryScreen() {
       </View>
 
       {/* Add Item Modal */}
-      <Modal
+      <AddItemModal
         visible={showAddModal}
-        animationType='slide'
-        presentationStyle='pageSheet'
-      >
-        <View style={styles.modalContainer}>
-          <PantryHeader
-            title='Add Item'
-            subtitle='Add a new item to your pantry'
-            gradient='primary'
-            showBackButton
-            onBackPress={handleCloseAddModal}
-          />
-
-          <View style={styles.modalContent}>
-            <PantryCard variant='elevated' padding='lg'>
-              <Text style={styles.modalPlaceholder}>
-                Add item form coming soon!
-              </Text>
-              <View style={styles.modalActions}>
-                <PantryButton
-                  title='Cancel'
-                  onPress={handleCloseAddModal}
-                  variant='outline'
-                  size='md'
-                />
-                <PantryButton
-                  title='Save'
-                  onPress={handleSaveItem}
-                  variant='primary'
-                  size='md'
-                />
-              </View>
-            </PantryCard>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowAddModal(false)}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  categoryChip: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  categoryChipActive: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
-  },
-  categoryChipText: {
-    ...typography.bodySmall,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-  categoryChipTextActive: {
-    color: '#fff',
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: spacing.md,
-  },
-  emptyStateSubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  emptyStateText: {
-    ...typography.h4,
-    color: colors.neutral[600],
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  expirationInfo: {
-    marginBottom: spacing.sm,
-  },
-  expirationText: {
-    ...typography.bodySmall,
-    fontWeight: '500',
-  },
-  itemActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  itemCategory: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  itemHeader: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    ...typography.body,
-    color: colors.neutral[800],
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  itemQuantity: {
-    alignItems: 'flex-end',
-  },
-  itemsContainer: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  listContent: {
-    paddingBottom: spacing.xl,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  modalContainer: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  modalContent: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  modalPlaceholder: {
-    ...typography.body,
-    color: colors.neutral[600],
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  quantityText: {
-    ...typography.body,
-    color: colors.primary[600],
-    fontWeight: '600',
-  },
-  searchContainer: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  searchInput: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
-    color: colors.neutral[900],
-    flex: 1,
-    fontSize: 16,
-    height: 44,
-    paddingHorizontal: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  sortChip: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  sortChipActive: {
-    backgroundColor: colors.secondary[500],
-    borderColor: colors.secondary[500],
-  },
-  sortChipText: {
-    ...typography.bodySmall,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-  sortChipTextActive: {
-    color: '#fff',
-  },
-  sortContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    categoryChip: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.pill,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    categoryChipActive: {
+      backgroundColor: colors.primary[500],
+      borderColor: colors.primary[500],
+    },
+    categoryChipText: {
+      ...typography.bodySmall,
+      color: colors.neutral[700],
+      fontWeight: '500',
+    },
+    categoryChipTextActive: {
+      color: '#fff',
+    },
+    categoryContainer: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    container: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    emptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.xl,
+    },
+    emptyStateIcon: {
+      fontSize: 64,
+      marginBottom: spacing.md,
+    },
+    emptyStateSubtext: {
+      ...typography.bodySmall,
+      color: colors.neutral[500],
+      marginBottom: spacing.lg,
+      textAlign: 'center',
+    },
+    emptyStateText: {
+      ...typography.h4,
+      color: colors.neutral[600],
+      marginBottom: spacing.sm,
+      textAlign: 'center',
+    },
+    expirationInfo: {
+      marginBottom: spacing.sm,
+    },
+    expirationText: {
+      ...typography.bodySmall,
+      fontWeight: '500',
+    },
+    itemActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    itemCategory: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+    },
+    itemHeader: {
+      alignItems: 'flex-start',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    itemInfo: {
+      flex: 1,
+    },
+    itemName: {
+      ...typography.body,
+      color: colors.neutral[800],
+      fontWeight: '600',
+      marginBottom: spacing.xs,
+    },
+    itemQuantity: {
+      alignItems: 'flex-end',
+    },
+    itemsContainer: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    listContent: {
+      paddingBottom: spacing.xl,
+    },
+    optionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    quantityText: {
+      ...typography.body,
+      color: colors.primary[600],
+      fontWeight: '600',
+    },
+    searchContainer: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    searchInput: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.input,
+      borderWidth: 1,
+      color: colors.neutral[900],
+      flex: 1,
+      fontSize: 16,
+      height: 44,
+      paddingHorizontal: spacing.md,
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.md,
+    },
+    sortChip: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    sortChipActive: {
+      backgroundColor: colors.secondary[500],
+      borderColor: colors.secondary[500],
+    },
+    sortChipText: {
+      ...typography.bodySmall,
+      color: colors.neutral[700],
+      fontWeight: '500',
+    },
+    sortChipTextActive: {
+      color: '#fff',
+    },
+    sortContainer: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+  });
