@@ -10,6 +10,7 @@ import {
   TextInput,
   Share,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
@@ -45,6 +46,40 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   const [autoSyncEnabled, setAutoSyncEnabled] = React.useState(true);
   const [importVisible, setImportVisible] = React.useState(false);
   const [importText, setImportText] = React.useState('');
+
+  // Load persisted app settings on mount
+  React.useEffect(() => {
+    AsyncStorage.getItem('app_settings').then(raw => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        if (typeof saved.notifications === 'boolean')
+          setNotificationsEnabled(saved.notifications);
+        if (typeof saved.darkMode === 'boolean')
+          setDarkModeEnabled(saved.darkMode);
+        if (typeof saved.autoSync === 'boolean')
+          setAutoSyncEnabled(saved.autoSync);
+      } catch {
+        // ignore malformed settings
+      }
+    });
+  }, []);
+
+  const persistSettings = (patch: {
+    notifications?: boolean;
+    darkMode?: boolean;
+    autoSync?: boolean;
+  }) => {
+    const next = {
+      notifications: notificationsEnabled,
+      darkMode: darkModeEnabled,
+      autoSync: autoSyncEnabled,
+      ...patch,
+    };
+    AsyncStorage.setItem('app_settings', JSON.stringify(next)).catch(
+      () => undefined
+    );
+  };
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -183,7 +218,10 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
             </View>
             <Switch
               value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              onValueChange={value => {
+                setNotificationsEnabled(value);
+                persistSettings({ notifications: value });
+              }}
               trackColor={{
                 false: colors.neutral[300],
                 true: colors.primary[300],
@@ -201,7 +239,10 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
             </View>
             <Switch
               value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
+              onValueChange={value => {
+                setDarkModeEnabled(value);
+                persistSettings({ darkMode: value });
+              }}
               trackColor={{
                 false: colors.neutral[300],
                 true: colors.primary[300],
@@ -221,7 +262,10 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
             </View>
             <Switch
               value={autoSyncEnabled}
-              onValueChange={setAutoSyncEnabled}
+              onValueChange={value => {
+                setAutoSyncEnabled(value);
+                persistSettings({ autoSync: value });
+              }}
               trackColor={{
                 false: colors.neutral[300],
                 true: colors.primary[300],
