@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -12,12 +12,8 @@ import {
 import PantryHeader from './PantryHeader';
 import PantryCard from './PantryCard';
 import PantryButton from './PantryButton';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-} from '../utils/designSystem';
+import { typography, spacing, borderRadius } from '../utils/designSystem';
+import { useTheme, ThemeColors } from '../theme';
 import { categorizeItem } from '../utils/helpers';
 import { useMultiUserStore } from '../store/useMultiUserStore';
 
@@ -47,6 +43,8 @@ export default function AddItemModal({
   onAdded,
 }: AddItemModalProps) {
   const addGroceryItem = useMultiUserStore(state => state.addGroceryItem);
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [name, setName] = useState(initialName);
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('piece');
@@ -222,66 +220,67 @@ export default function AddItemModal({
   );
 }
 
-const styles = StyleSheet.create({
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  chip: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  chipActive: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  chipText: {
-    ...typography.bodySmall,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  fieldLabel: {
-    ...typography.bodySmall,
-    color: colors.neutral[700],
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  input: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
-    color: colors.neutral[900],
-    fontSize: 16,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    actions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.lg,
+    },
+    chip: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.pill,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    chipActive: {
+      backgroundColor: colors.primary[500],
+      borderColor: colors.primary[500],
+    },
+    chipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    chipText: {
+      ...typography.bodySmall,
+      color: colors.neutral[700],
+      fontWeight: '500',
+    },
+    chipTextActive: {
+      color: '#fff',
+    },
+    container: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    fieldLabel: {
+      ...typography.bodySmall,
+      color: colors.neutral[700],
+      fontWeight: '600',
+      marginBottom: spacing.xs,
+      marginTop: spacing.sm,
+    },
+    input: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.input,
+      borderWidth: 1,
+      color: colors.neutral[900],
+      fontSize: 16,
+      minHeight: 44,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    textArea: {
+      height: 80,
+      textAlignVertical: 'top',
+    },
+  });

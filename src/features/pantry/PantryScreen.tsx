@@ -16,15 +16,13 @@ import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import AddItemModal from '../../components/AddItemModal';
 import { pantryToCsv } from '../../utils/exportData';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-} from '../../utils/designSystem';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { useTheme, ThemeColors } from '../../theme';
 
 export default function PantryScreen() {
   const { pantry, markItemAsUsed } = useMultiUserStore();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -342,149 +340,150 @@ export default function PantryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  categoryChip: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.pill,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  categoryChipActive: {
-    backgroundColor: colors.primary[500],
-    borderColor: colors.primary[500],
-  },
-  categoryChipText: {
-    ...typography.bodySmall,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-  categoryChipTextActive: {
-    color: '#fff',
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: spacing.md,
-  },
-  emptyStateSubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  emptyStateText: {
-    ...typography.h4,
-    color: colors.neutral[600],
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  expirationInfo: {
-    marginBottom: spacing.sm,
-  },
-  expirationText: {
-    ...typography.bodySmall,
-    fontWeight: '500',
-  },
-  itemActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  itemCategory: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  itemHeader: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    ...typography.body,
-    color: colors.neutral[800],
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  itemQuantity: {
-    alignItems: 'flex-end',
-  },
-  itemsContainer: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  listContent: {
-    paddingBottom: spacing.xl,
-  },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  quantityText: {
-    ...typography.body,
-    color: colors.primary[600],
-    fontWeight: '600',
-  },
-  searchContainer: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  searchInput: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
-    color: colors.neutral[900],
-    flex: 1,
-    fontSize: 16,
-    height: 44,
-    paddingHorizontal: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  sortChip: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  sortChipActive: {
-    backgroundColor: colors.secondary[500],
-    borderColor: colors.secondary[500],
-  },
-  sortChipText: {
-    ...typography.bodySmall,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-  sortChipTextActive: {
-    color: '#fff',
-  },
-  sortContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    categoryChip: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.pill,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    categoryChipActive: {
+      backgroundColor: colors.primary[500],
+      borderColor: colors.primary[500],
+    },
+    categoryChipText: {
+      ...typography.bodySmall,
+      color: colors.neutral[700],
+      fontWeight: '500',
+    },
+    categoryChipTextActive: {
+      color: '#fff',
+    },
+    categoryContainer: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    container: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    emptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.xl,
+    },
+    emptyStateIcon: {
+      fontSize: 64,
+      marginBottom: spacing.md,
+    },
+    emptyStateSubtext: {
+      ...typography.bodySmall,
+      color: colors.neutral[500],
+      marginBottom: spacing.lg,
+      textAlign: 'center',
+    },
+    emptyStateText: {
+      ...typography.h4,
+      color: colors.neutral[600],
+      marginBottom: spacing.sm,
+      textAlign: 'center',
+    },
+    expirationInfo: {
+      marginBottom: spacing.sm,
+    },
+    expirationText: {
+      ...typography.bodySmall,
+      fontWeight: '500',
+    },
+    itemActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    itemCategory: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+    },
+    itemHeader: {
+      alignItems: 'flex-start',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    itemInfo: {
+      flex: 1,
+    },
+    itemName: {
+      ...typography.body,
+      color: colors.neutral[800],
+      fontWeight: '600',
+      marginBottom: spacing.xs,
+    },
+    itemQuantity: {
+      alignItems: 'flex-end',
+    },
+    itemsContainer: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    listContent: {
+      paddingBottom: spacing.xl,
+    },
+    optionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    quantityText: {
+      ...typography.body,
+      color: colors.primary[600],
+      fontWeight: '600',
+    },
+    searchContainer: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    searchInput: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.input,
+      borderWidth: 1,
+      color: colors.neutral[900],
+      flex: 1,
+      fontSize: 16,
+      height: 44,
+      paddingHorizontal: spacing.md,
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.md,
+    },
+    sortChip: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    sortChipActive: {
+      backgroundColor: colors.secondary[500],
+      borderColor: colors.secondary[500],
+    },
+    sortChipText: {
+      ...typography.bodySmall,
+      color: colors.neutral[700],
+      fontWeight: '500',
+    },
+    sortChipTextActive: {
+      color: '#fff',
+    },
+    sortContainer: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+  });

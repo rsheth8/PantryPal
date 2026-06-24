@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { colors, typography } from '../utils/designSystem';
+import { typography } from '../utils/designSystem';
+import { useTheme } from '../theme';
 import DashboardScreen from '../features/dashboard/DashboardScreen';
 import PantryScreen from '../features/pantry/PantryScreen';
 import RecipesScreen from '../features/recipes/RecipesScreen';
@@ -16,12 +17,13 @@ interface MainTabNavigatorProps {
 }
 
 export default function MainTabNavigator({ onSignOut }: MainTabNavigatorProps) {
+  const { colors } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: colors.surface,
           borderTopWidth: 0,
           elevation: 0,
           shadowColor: '#000',

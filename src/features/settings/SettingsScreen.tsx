@@ -15,12 +15,8 @@ import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-} from '../../utils/designSystem';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { useTheme, ThemeColors } from '../../theme';
 import {
   pantryToCsv,
   buildBackupJson,
@@ -41,8 +37,9 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
     recipes,
     addGroceryItem,
   } = useMultiUserStore();
+  const { colors, isDark, setMode } = useTheme();
+  const styles = makeStyles(colors);
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
   const [autoSyncEnabled, setAutoSyncEnabled] = React.useState(true);
   const [importVisible, setImportVisible] = React.useState(false);
   const [importText, setImportText] = React.useState('');
@@ -55,8 +52,6 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
         const saved = JSON.parse(raw);
         if (typeof saved.notifications === 'boolean')
           setNotificationsEnabled(saved.notifications);
-        if (typeof saved.darkMode === 'boolean')
-          setDarkModeEnabled(saved.darkMode);
         if (typeof saved.autoSync === 'boolean')
           setAutoSyncEnabled(saved.autoSync);
       } catch {
@@ -67,12 +62,10 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
 
   const persistSettings = (patch: {
     notifications?: boolean;
-    darkMode?: boolean;
     autoSync?: boolean;
   }) => {
     const next = {
       notifications: notificationsEnabled,
-      darkMode: darkModeEnabled,
       autoSync: autoSyncEnabled,
       ...patch,
     };
@@ -238,18 +231,13 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
               <Text style={styles.settingSubtitle}>Switch to dark theme</Text>
             </View>
             <Switch
-              value={darkModeEnabled}
-              onValueChange={value => {
-                setDarkModeEnabled(value);
-                persistSettings({ darkMode: value });
-              }}
+              value={isDark}
+              onValueChange={value => setMode(value ? 'dark' : 'light')}
               trackColor={{
                 false: colors.neutral[300],
                 true: colors.primary[300],
               }}
-              thumbColor={
-                darkModeEnabled ? colors.primary[500] : colors.neutral[400]
-              }
+              thumbColor={isDark ? colors.primary[500] : colors.neutral[400]}
             />
           </View>
 
@@ -411,110 +399,111 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  householdDescription: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  householdName: {
-    ...typography.bodySmall,
-    color: colors.primary[600],
-    fontWeight: '600',
-  },
-  importActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  importContent: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  importHint: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.sm,
-  },
-  importInput: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
-    color: colors.neutral[900],
-    fontSize: 14,
-    height: 180,
-    padding: spacing.md,
-    textAlignVertical: 'top',
-  },
-  importModalContainer: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  infoItem: {
-    alignItems: 'center',
-    borderBottomColor: colors.neutral[100],
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  infoLabel: {
-    ...typography.body,
-    color: colors.neutral[700],
-  },
-  infoValue: {
-    ...typography.body,
-    color: colors.neutral[600],
-    fontWeight: '500',
-  },
-  profileEmail: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.xs,
-  },
-  profileInfo: {
-    alignItems: 'center',
-  },
-  profileName: {
-    ...typography.h3,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  settingContent: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  settingItem: {
-    alignItems: 'center',
-    borderBottomColor: colors.neutral[100],
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  settingSubtitle: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  settingTitle: {
-    ...typography.body,
-    color: colors.neutral[800],
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    householdDescription: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+      marginBottom: spacing.md,
+      textAlign: 'center',
+    },
+    householdName: {
+      ...typography.bodySmall,
+      color: colors.primary[600],
+      fontWeight: '600',
+    },
+    importActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    importContent: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    importHint: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+      marginBottom: spacing.sm,
+    },
+    importInput: {
+      backgroundColor: colors.neutral[100],
+      borderColor: colors.neutral[200],
+      borderRadius: borderRadius.input,
+      borderWidth: 1,
+      color: colors.neutral[900],
+      fontSize: 14,
+      height: 180,
+      padding: spacing.md,
+      textAlignVertical: 'top',
+    },
+    importModalContainer: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    infoItem: {
+      alignItems: 'center',
+      borderBottomColor: colors.neutral[100],
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+    },
+    infoLabel: {
+      ...typography.body,
+      color: colors.neutral[700],
+    },
+    infoValue: {
+      ...typography.body,
+      color: colors.neutral[600],
+      fontWeight: '500',
+    },
+    profileEmail: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+      marginBottom: spacing.xs,
+    },
+    profileInfo: {
+      alignItems: 'center',
+    },
+    profileName: {
+      ...typography.h3,
+      color: colors.neutral[800],
+      marginBottom: spacing.xs,
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.md,
+    },
+    settingContent: {
+      flex: 1,
+      marginRight: spacing.md,
+    },
+    settingItem: {
+      alignItems: 'center',
+      borderBottomColor: colors.neutral[100],
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+    },
+    settingSubtitle: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+    },
+    settingTitle: {
+      ...typography.body,
+      color: colors.neutral[800],
+      fontWeight: '600',
+      marginBottom: spacing.xs,
+    },
+  });

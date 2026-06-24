@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, ViewStyle } from 'react-native';
-import { colors, borderRadius, shadows, spacing } from '../utils/designSystem';
+import { borderRadius, shadows, spacing } from '../utils/designSystem';
+import { useTheme } from '../theme';
 
 interface PantryCardProps {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export default function PantryCard({
   padding = 'md',
   margin = 'sm',
 }: PantryCardProps) {
+  const { colors } = useTheme();
   const getCardStyle = (): ViewStyle => {
     const baseStyle: ViewStyle = {
       borderRadius: borderRadius.card,
@@ -28,7 +30,7 @@ export default function PantryCard({
       case 'fresh':
         return {
           ...baseStyle,
-          backgroundColor: '#fff',
+          backgroundColor: colors.surface,
           ...shadows.fresh,
           borderWidth: 1,
           borderColor: colors.primary[100],
@@ -36,7 +38,7 @@ export default function PantryCard({
       case 'warm':
         return {
           ...baseStyle,
-          backgroundColor: '#fff',
+          backgroundColor: colors.surface,
           ...shadows.warm,
           borderWidth: 1,
           borderColor: colors.secondary[100],
@@ -44,7 +46,7 @@ export default function PantryCard({
       case 'elevated':
         return {
           ...baseStyle,
-          backgroundColor: '#fff',
+          backgroundColor: colors.surface,
           ...shadows.lg,
           borderWidth: 1,
           borderColor: colors.neutral[100],
@@ -59,7 +61,7 @@ export default function PantryCard({
       default:
         return {
           ...baseStyle,
-          backgroundColor: '#fff',
+          backgroundColor: colors.surface,
           ...shadows.md,
           borderWidth: 1,
           borderColor: colors.neutral[100],

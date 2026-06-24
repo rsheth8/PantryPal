@@ -8,12 +8,12 @@ import {
   View,
 } from 'react-native';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
   shadows,
 } from '../utils/designSystem';
+import { useTheme } from '../theme';
 
 interface PantryButtonProps {
   title: string;
@@ -50,6 +50,7 @@ export default function PantryButton({
   textStyle,
   fullWidth = false,
 }: PantryButtonProps) {
+  const { colors } = useTheme();
   const getButtonStyle = (): ViewStyle => {
     const baseStyle: ViewStyle = {
       borderRadius: borderRadius.button,

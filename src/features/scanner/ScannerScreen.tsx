@@ -16,12 +16,8 @@ import PantryButton from '../../components/PantryButton';
 import AddItemModal from '../../components/AddItemModal';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import { ocrService, ReceiptItem } from '../../services/ocrService';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-} from '../../utils/designSystem';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { useTheme, ThemeColors } from '../../theme';
 
 const BARCODE_TYPES: BarcodeType[] = [
   'ean13',
@@ -52,6 +48,8 @@ async function lookupBarcode(code: string): Promise<string | null> {
 
 export default function ScannerScreen() {
   const addGroceryItem = useMultiUserStore(state => state.addGroceryItem);
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [permission, requestPermission] = useCameraPermissions();
 
   const [cameraVisible, setCameraVisible] = useState(false);
@@ -393,155 +391,156 @@ export default function ScannerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  camera: {
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  cameraContainer: {
-    backgroundColor: '#000',
-    flex: 1,
-  },
-  cameraFrame: {
-    borderColor: '#fff',
-    borderRadius: borderRadius.lg,
-    borderWidth: 3,
-    height: 180,
-    marginBottom: spacing.xl,
-    width: 260,
-  },
-  cameraOverlay: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  cameraText: {
-    ...typography.h4,
-    color: '#fff',
-    marginBottom: spacing.lg,
-  },
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  emptyText: {
-    ...typography.body,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  loadingOverlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    flex: 1,
-    justifyContent: 'center',
-  },
-  loadingOverlayText: {
-    ...typography.body,
-    color: '#fff',
-    marginTop: spacing.md,
-  },
-  loadingText: {
-    ...typography.body,
-    color: colors.neutral[600],
-    marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  ocrInfo: {
-    flex: 1,
-  },
-  ocrMeta: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  ocrName: {
-    ...typography.body,
-    color: colors.neutral[800],
-    fontWeight: '600',
-  },
-  ocrRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  optionsGrid: {
-    gap: spacing.md,
-  },
-  recentCard: {
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-  },
-  recentItem: {
-    borderBottomColor: colors.neutral[100],
-    borderBottomWidth: 1,
-    paddingVertical: spacing.sm,
-  },
-  recentItemText: {
-    ...typography.body,
-    color: colors.neutral[700],
-  },
-  recentSubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-    textAlign: 'center',
-  },
-  recentTitle: {
-    ...typography.h4,
-    color: colors.neutral[700],
-    marginBottom: spacing.xs,
-  },
-  scannerIcon: {
-    fontSize: 64,
-    marginBottom: spacing.md,
-  },
-  scannerPreview: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  scannerSubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  scannerText: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  tipCard: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    marginBottom: spacing.md,
-  },
-  tipContent: {
-    flex: 1,
-  },
-  tipIcon: {
-    fontSize: 24,
-    marginRight: spacing.sm,
-    marginTop: 2,
-  },
-  tipText: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  tipTitle: {
-    ...typography.body,
-    color: colors.neutral[800],
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    camera: {
+      bottom: 0,
+      left: 0,
+      position: 'absolute',
+      right: 0,
+      top: 0,
+    },
+    cameraContainer: {
+      backgroundColor: '#000',
+      flex: 1,
+    },
+    cameraFrame: {
+      borderColor: '#fff',
+      borderRadius: borderRadius.lg,
+      borderWidth: 3,
+      height: 180,
+      marginBottom: spacing.xl,
+      width: 260,
+    },
+    cameraOverlay: {
+      alignItems: 'center',
+      flex: 1,
+      justifyContent: 'center',
+    },
+    cameraText: {
+      ...typography.h4,
+      color: '#fff',
+      marginBottom: spacing.lg,
+    },
+    container: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    emptyText: {
+      ...typography.body,
+      color: colors.neutral[600],
+      textAlign: 'center',
+    },
+    loadingOverlay: {
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      flex: 1,
+      justifyContent: 'center',
+    },
+    loadingOverlayText: {
+      ...typography.body,
+      color: '#fff',
+      marginTop: spacing.md,
+    },
+    loadingText: {
+      ...typography.body,
+      color: colors.neutral[600],
+      marginTop: spacing.md,
+      textAlign: 'center',
+    },
+    ocrInfo: {
+      flex: 1,
+    },
+    ocrMeta: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+    },
+    ocrName: {
+      ...typography.body,
+      color: colors.neutral[800],
+      fontWeight: '600',
+    },
+    ocrRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    optionsGrid: {
+      gap: spacing.md,
+    },
+    recentCard: {
+      alignItems: 'center',
+      paddingVertical: spacing.lg,
+    },
+    recentItem: {
+      borderBottomColor: colors.neutral[100],
+      borderBottomWidth: 1,
+      paddingVertical: spacing.sm,
+    },
+    recentItemText: {
+      ...typography.body,
+      color: colors.neutral[700],
+    },
+    recentSubtext: {
+      ...typography.bodySmall,
+      color: colors.neutral[500],
+      textAlign: 'center',
+    },
+    recentTitle: {
+      ...typography.h4,
+      color: colors.neutral[700],
+      marginBottom: spacing.xs,
+    },
+    scannerIcon: {
+      fontSize: 64,
+      marginBottom: spacing.md,
+    },
+    scannerPreview: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: spacing.xl,
+    },
+    scannerSubtext: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+      textAlign: 'center',
+    },
+    scannerText: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.xs,
+      textAlign: 'center',
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.md,
+    },
+    tipCard: {
+      alignItems: 'flex-start',
+      flexDirection: 'row',
+      marginBottom: spacing.md,
+    },
+    tipContent: {
+      flex: 1,
+    },
+    tipIcon: {
+      fontSize: 24,
+      marginRight: spacing.sm,
+      marginTop: 2,
+    },
+    tipText: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+    },
+    tipTitle: {
+      ...typography.body,
+      color: colors.neutral[800],
+      fontWeight: '600',
+      marginBottom: spacing.xs,
+    },
+  });

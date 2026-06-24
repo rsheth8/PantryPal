@@ -12,12 +12,8 @@ import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import { buildBackupJson } from '../../utils/exportData';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-} from '../../utils/designSystem';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { useTheme, ThemeColors } from '../../theme';
 
 export default function AnalyticsScreen() {
   const {
@@ -28,6 +24,8 @@ export default function AnalyticsScreen() {
     currentUser,
     currentHousehold,
   } = useMultiUserStore();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [activeTab, setActiveTab] = useState<
     'overview' | 'spending' | 'waste' | 'household' | 'shopping'
   >('overview');
@@ -541,178 +539,179 @@ export default function AnalyticsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  actionsGrid: {
-    gap: spacing.sm,
-  },
-  activeTabButton: {
-    backgroundColor: colors.primary[500],
-  },
-  activeTabLabel: {
-    color: '#fff',
-  },
-  barFill: {
-    backgroundColor: colors.primary[500],
-    borderRadius: 4,
-    height: '100%',
-  },
-  barHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  barLabel: {
-    ...typography.bodySmall,
-    color: colors.neutral[700],
-  },
-  barRow: {
-    marginBottom: spacing.md,
-  },
-  barTrack: {
-    backgroundColor: colors.neutral[200],
-    borderRadius: 4,
-    height: 8,
-    overflow: 'hidden',
-  },
-  barValue: {
-    ...typography.bodySmall,
-    color: colors.neutral[800],
-    fontWeight: '600',
-  },
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  listMeta: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  listName: {
-    ...typography.body,
-    color: colors.neutral[800],
-  },
-  listRow: {
-    borderBottomColor: colors.neutral[100],
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  metricCard: {
-    alignItems: 'center',
-    backgroundColor: colors.neutral[100],
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
-    padding: spacing.md,
-    width: '48%',
-  },
-  metricLabel: {
-    ...typography.caption,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  metricValue: {
-    ...typography.h2,
-    color: colors.neutral[900],
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  placeholderText: {
-    ...typography.body,
-    color: colors.neutral[600],
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-  progressBar: {
-    backgroundColor: colors.neutral[200],
-    borderRadius: 6,
-    height: 12,
-    overflow: 'hidden',
-  },
-  progressContainer: {
-    marginTop: spacing.sm,
-  },
-  progressFill: {
-    backgroundColor: colors.success,
-    borderRadius: 6,
-    height: '100%',
-  },
-  progressHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  progressPercentage: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '600',
-  },
-  progressText: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  statusGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statusIcon: {
-    fontSize: 24,
-    marginBottom: spacing.xs,
-  },
-  statusItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statusLabel: {
-    ...typography.caption,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  statusValue: {
-    ...typography.h3,
-    color: colors.neutral[900],
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  tabButton: {
-    alignItems: 'center',
-    backgroundColor: colors.neutral[100],
-    borderRadius: borderRadius.md,
-    minWidth: 80,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  tabContent: {
-    flex: 1,
-    marginTop: spacing.md,
-  },
-  tabIcon: {
-    fontSize: 20,
-    marginBottom: spacing.xs,
-  },
-  tabLabel: {
-    ...typography.caption,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    actionsGrid: {
+      gap: spacing.sm,
+    },
+    activeTabButton: {
+      backgroundColor: colors.primary[500],
+    },
+    activeTabLabel: {
+      color: '#fff',
+    },
+    barFill: {
+      backgroundColor: colors.primary[500],
+      borderRadius: 4,
+      height: '100%',
+    },
+    barHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xs,
+    },
+    barLabel: {
+      ...typography.bodySmall,
+      color: colors.neutral[700],
+    },
+    barRow: {
+      marginBottom: spacing.md,
+    },
+    barTrack: {
+      backgroundColor: colors.neutral[200],
+      borderRadius: 4,
+      height: 8,
+      overflow: 'hidden',
+    },
+    barValue: {
+      ...typography.bodySmall,
+      color: colors.neutral[800],
+      fontWeight: '600',
+    },
+    container: {
+      backgroundColor: colors.neutral[50],
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    listMeta: {
+      ...typography.bodySmall,
+      color: colors.neutral[600],
+    },
+    listName: {
+      ...typography.body,
+      color: colors.neutral[800],
+    },
+    listRow: {
+      borderBottomColor: colors.neutral[100],
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+    },
+    metricCard: {
+      alignItems: 'center',
+      backgroundColor: colors.neutral[100],
+      borderRadius: borderRadius.md,
+      marginBottom: spacing.sm,
+      padding: spacing.md,
+      width: '48%',
+    },
+    metricLabel: {
+      ...typography.caption,
+      color: colors.neutral[600],
+      textAlign: 'center',
+    },
+    metricValue: {
+      ...typography.h2,
+      color: colors.neutral[900],
+      fontWeight: '700',
+      marginBottom: spacing.xs,
+    },
+    metricsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+    },
+    placeholderText: {
+      ...typography.body,
+      color: colors.neutral[600],
+      fontStyle: 'italic',
+      textAlign: 'center',
+    },
+    progressBar: {
+      backgroundColor: colors.neutral[200],
+      borderRadius: 6,
+      height: 12,
+      overflow: 'hidden',
+    },
+    progressContainer: {
+      marginTop: spacing.sm,
+    },
+    progressFill: {
+      backgroundColor: colors.success,
+      borderRadius: 6,
+      height: '100%',
+    },
+    progressHeader: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    progressPercentage: {
+      ...typography.body,
+      color: colors.neutral[700],
+      fontWeight: '600',
+    },
+    progressText: {
+      ...typography.body,
+      color: colors.neutral[700],
+      fontWeight: '500',
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: colors.neutral[800],
+      marginBottom: spacing.md,
+    },
+    statusGrid: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    statusIcon: {
+      fontSize: 24,
+      marginBottom: spacing.xs,
+    },
+    statusItem: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    statusLabel: {
+      ...typography.caption,
+      color: colors.neutral[600],
+      textAlign: 'center',
+    },
+    statusValue: {
+      ...typography.h3,
+      color: colors.neutral[900],
+      fontWeight: '700',
+      marginBottom: spacing.xs,
+    },
+    tabButton: {
+      alignItems: 'center',
+      backgroundColor: colors.neutral[100],
+      borderRadius: borderRadius.md,
+      minWidth: 80,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    tabContainer: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    tabContent: {
+      flex: 1,
+      marginTop: spacing.md,
+    },
+    tabIcon: {
+      fontSize: 20,
+      marginBottom: spacing.xs,
+    },
+    tabLabel: {
+      ...typography.caption,
+      color: colors.neutral[700],
+      fontWeight: '500',
+    },
+  });
