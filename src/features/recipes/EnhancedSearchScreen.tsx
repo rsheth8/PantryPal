@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RecipesStackParamList } from '../../navigation/types';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
@@ -59,7 +61,7 @@ const POPULAR_TAGS = [
 ];
 
 export default function EnhancedSearchScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<RecipesStackParamList>>();
   const { recipes, pantry, preferences, addMissingIngredientsToShoppingList } = useMultiUserStore();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -375,14 +377,14 @@ export default function EnhancedSearchScreen() {
       Alert.alert('Cannot Cook', 'You need to add missing ingredients first.');
       return;
     }
-    navigation.navigate('CookingMode' as never, { recipe } as never);
+    navigation.navigate('CookingMode', { recipe });
   };
 
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
     <PantryCard variant="default" padding="md" margin="sm">
       <TouchableOpacity
         onPress={() => {
-          navigation.navigate('RecipeDetail' as never, { recipe: item } as never);
+          navigation.navigate('RecipeDetail', { recipe: item });
         }}
         activeOpacity={0.8}
       >
@@ -391,7 +393,7 @@ export default function EnhancedSearchScreen() {
             <Text style={styles.recipeTitle}>{item.title}</Text>
             <View style={styles.recipeMeta}>
               <Text style={styles.recipeTime}>
-                ⏱️ {item.prepTime + item.cookTime} min
+                ⏱️ {(item.prepTime || 0) + (item.cookTime || 0)} min
               </Text>
               <Text style={styles.recipeServings}>
                 👥 {item.servings} servings
@@ -460,7 +462,7 @@ export default function EnhancedSearchScreen() {
         <View style={styles.recipeActions}>
           <PantryButton
             title="View"
-            onPress={() => navigation.navigate('RecipeDetail' as never, { recipe: item } as never)}
+            onPress={() => navigation.navigate('RecipeDetail', { recipe: item })}
             variant="outline"
             size="sm"
           />
@@ -523,7 +525,7 @@ export default function EnhancedSearchScreen() {
               placeholder="Search recipes, ingredients, cuisines..."
               value={searchQuery}
               onChangeText={setSearchQuery}
-              onSubmitEditing={performSearch}
+              onSubmitEditing={() => performSearch()}
               placeholderTextColor={colors.neutral[400]}
             />
             <PantryButton

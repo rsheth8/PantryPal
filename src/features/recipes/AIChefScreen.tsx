@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,48 +13,91 @@ import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import { aiChefService } from '../../services/aiChefService';
-import { AIRecipeSuggestion, UserPreferences, GroceryItem } from '../../types';
+import { userPreferencesService } from '../../services/userPreferencesService';
+import { useMultiUserStore } from '../../store/useMultiUserStore';
+import { AIRecipeSuggestion, UserPreferences } from '../../types';
 
 export default function AIChefScreen() {
   const navigation = useNavigation();
+  const { pantry, currentUser } = useMultiUserStore();
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<AIRecipeSuggestion[]>([]);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
   const [conversation, setConversation] = useState<Array<{
     type: 'user' | 'ai';
     message: string;
     timestamp: Date;
   }>>([]);
 
-  // Mock user preferences and pantry - in production, these would come from your store
-  const mockUserPreferences: UserPreferences = {
-    id: '1',
-    userId: '1',
-    dietaryRestrictions: ['vegetarian'],
-    allergies: [],
-    preferredCuisines: ['mediterranean', 'italian'],
-    dislikedIngredients: [],
-    cookingSkill: 'intermediate',
-    preferredCookingTime: 'medium',
-    preferredServings: 2,
-    spiceTolerance: 'medium',
-    preferredFlavors: ['savory', 'herbaceous'],
-    healthGoals: ['balanced_nutrition'],
-    preferredRecipeTypes: ['dinner', 'lunch'],
-    cookingEquipment: ['stovetop', 'oven'],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+  useEffect(() => {
+    async function loadPreferences() {
+      if (!currentUser) return;
 
-  const mockPantryItems: GroceryItem[] = [
-    { id: '1', name: 'quinoa', quantity: 1, unit: 'cup', category: 'Grains & Bread', expirationDate: '2024-12-31', isExpired: false, isUsed: false },
-    { id: '2', name: 'chickpeas', quantity: 1, unit: 'can', category: 'Canned', expirationDate: '2024-12-31', isExpired: false, isUsed: false },
-    { id: '3', name: 'olive oil', quantity: 1, unit: 'bottle', category: 'Condiments', expirationDate: '2024-12-31', isExpired: false, isUsed: false },
-    { id: '4', name: 'pasta', quantity: 1, unit: 'box', category: 'Grains & Bread', expirationDate: '2024-12-31', isExpired: false, isUsed: false },
-  ];
+      const recipePrefs =
+        await userPreferencesService.getUserRecipePreferences(currentUser.id);
+      const defaults = userPreferencesService.getDefaultPreferences();
+      const prefs = recipePrefs as Record<string, unknown> | null;
+
+      setUserPreferences({
+        id: currentUser.id,
+        userId: currentUser.id,
+        dietaryRestrictions:
+          (prefs?.dietary_restrictions as string[]) ||
+          recipePrefs?.dietaryRestrictions ||
+          defaults.dietaryRestrictions ||
+          [],
+        allergies:
+          (prefs?.allergies as string[]) ||
+          recipePrefs?.allergies ||
+          defaults.allergies ||
+          [],
+        preferredCuisines:
+          (prefs?.preferred_cuisines as string[]) ||
+          recipePrefs?.preferredCuisines ||
+          defaults.preferredCuisines ||
+          [],
+        dislikedIngredients: [],
+        cookingSkill:
+          (prefs?.cooking_skill as UserPreferences['cookingSkill']) ||
+          recipePrefs?.cookingSkill ||
+          defaults.cookingSkill ||
+          'beginner',
+        preferredCookingTime: 'medium',
+        preferredServings:
+          (prefs?.serving_size_preference as number) ||
+          recipePrefs?.servingSizePreference ||
+          defaults.servingSizePreference ||
+          4,
+        spiceTolerance:
+          (prefs?.spice_tolerance as UserPreferences['spiceTolerance']) ||
+          recipePrefs?.spiceTolerance ||
+          defaults.spiceTolerance ||
+          'medium',
+        preferredFlavors: [],
+        healthGoals:
+          (prefs?.health_goals as string[]) ||
+          recipePrefs?.healthGoals ||
+          defaults.healthGoals ||
+          [],
+        preferredRecipeTypes: ['dinner', 'lunch'],
+        cookingEquipment: ['stovetop', 'oven'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    loadPreferences();
+  }, [currentUser]);
+
+  const pantryItems = pantry.filter(item => !item.isUsed && !item.isExpired);
 
   const handleSendPrompt = async () => {
     if (!prompt.trim()) return;
+    if (!userPreferences) {
+      Alert.alert('Loading', 'Still loading your preferences. Try again in a moment.');
+      return;
+    }
 
     const userMessage = prompt.trim();
     setPrompt('');
@@ -71,11 +114,11 @@ export default function AIChefScreen() {
       const aiSuggestions = await aiChefService.generateRecipeSuggestions({
         prompt: userMessage,
         context: {
-          pantryItems: mockPantryItems,
-          userPreferences: mockUserPreferences,
-          availableTime: 45, // Mock available time
-          mood: 'hungry', // Mock mood
-          occasion: 'weeknight', // Mock occasion
+          pantryItems,
+          userPreferences,
+          availableTime: userPreferences.preferredCookingTime === 'quick' ? 30 : 60,
+          mood: 'hungry',
+          occasion: 'weeknight',
         },
       });
 

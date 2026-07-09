@@ -24,6 +24,33 @@ import {
   pantryPreferencesService,
   defaultPantrySettings,
 } from '../services/pantryPreferencesService';
+import {
+  logHouseholdActivity,
+  HouseholdActivityAction,
+  HouseholdActivityItemType,
+} from '../services/householdActivityService';
+
+async function recordHouseholdActivity(
+  state: {
+    currentUser: User | null;
+    currentHousehold: Household | null;
+  },
+  action: HouseholdActivityAction,
+  itemName?: string,
+  itemType?: HouseholdActivityItemType
+) {
+  const { currentUser, currentHousehold } = state;
+  if (!currentUser || !currentHousehold) return;
+
+  await logHouseholdActivity({
+    householdId: currentHousehold.id,
+    userId: currentUser.id,
+    userName: currentUser.name,
+    action,
+    itemName,
+    itemType,
+  });
+}
 import { isDevMode } from '../config/dev';
 
 // Clear Zustand persisted storage in dev mode
@@ -108,7 +135,8 @@ interface MultiUserStore {
   removeRecipe: (id: string) => void;
 
   // Recipe Favorites Actions
-  toggleRecipeFavorite: (recipeId: string) => Promise<void>;
+  ensureRecipePersisted: (recipe: Recipe) => Promise<string>;
+  toggleRecipeFavorite: (recipeId: string, recipe?: Recipe) => Promise<string | void>;
   isRecipeFavorited: (recipeId: string) => boolean;
   loadFavoriteRecipes: () => Promise<void>;
 
@@ -197,13 +225,13 @@ export const useMultiUserStore = create<MultiUserStore>()(
           // Load household if user has one
           let household: Household | null = null;
           let users: User[] = [];
-          if (existingUser.household_id) {
+          const householdId =
+            existingUser.householdId || existingUser.household_id;
+          if (householdId) {
             console.log('Store: User has household, loading...');
-            console.log('Store: household_id:', existingUser.household_id);
+            console.log('Store: household_id:', householdId);
             try {
-              household = await userService.getHouseholdById(
-                existingUser.household_id
-              );
+              household = await userService.getHouseholdById(householdId);
               console.log('Store: Loaded household:', household);
               if (household) {
                 users = await userService.getHouseholdMembers(household.id);
@@ -212,7 +240,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
               } else {
                 console.log(
                   'Store: No household found for ID:',
-                  existingUser.household_id
+                  householdId
                 );
               }
             } catch (error) {
@@ -224,19 +252,19 @@ export const useMultiUserStore = create<MultiUserStore>()(
           const pantry = existingUser
             ? await supabaseService.getGroceryItems(
                 existingUser.id,
-                existingUser.household_id
+                householdId
               )
             : [];
           const shoppingList = existingUser
             ? await supabaseService.getShoppingListItems(
                 existingUser.id,
-                existingUser.household_id
+                householdId
               )
             : [];
           const recipes = existingUser
             ? await supabaseService.getRecipes(
                 existingUser.id,
-                existingUser.household_id
+                householdId
               )
             : [];
 
@@ -278,13 +306,40 @@ export const useMultiUserStore = create<MultiUserStore>()(
         const { currentUser } = get();
         if (!currentUser) throw new Error('No current user');
 
-        const household = await userService.createHousehold(
-          currentUser.id,
-          name
+        const household = await supabaseService.createHousehold(
+          name.trim(),
+          currentUser.id
         );
-        if (!household) throw new Error('Failed to create household');
 
-        set({ currentHousehold: household });
+        const updatedUser = await userService.getUserById(currentUser.id);
+        const users = await supabaseService.getHouseholdMembers(household.id);
+        const householdId = household.id;
+        const pantry = await supabaseService.getGroceryItems(
+          currentUser.id,
+          householdId
+        );
+        const shoppingList = await supabaseService.getShoppingListItems(
+          currentUser.id,
+          householdId
+        );
+
+        set({
+          currentHousehold: household,
+          currentUser: updatedUser || {
+            ...currentUser,
+            householdId,
+            household_id: householdId,
+          },
+          users,
+          pantry,
+          shoppingList,
+        });
+        await recordHouseholdActivity(
+          get(),
+          'joined',
+          household.name,
+          'household'
+        );
         return household;
       },
 
@@ -293,19 +348,38 @@ export const useMultiUserStore = create<MultiUserStore>()(
         if (!currentUser) return false;
 
         try {
-          const household = await userService.joinHousehold(
+          const household = await supabaseService.joinHousehold(
             currentUser.id,
-            code
+            code.trim().toUpperCase()
           );
           if (household) {
-            const users = await userService.getHouseholdMembers(household.id);
-            // Update current user with household info
-            const updatedUser = await userService.getUserById(currentUser.id);
+            const users = await supabaseService.getHouseholdMembers(
+              household.id
+            );
+            const updatedUser = await userService.getUserById(
+              currentUser.id
+            );
+            const pantry = await supabaseService.getGroceryItems(
+              currentUser.id,
+              household.id
+            );
+            const shoppingList = await supabaseService.getShoppingListItems(
+              currentUser.id,
+              household.id
+            );
             set({
               currentHousehold: household,
               users,
-              currentUser: updatedUser,
+              currentUser: updatedUser || currentUser,
+              pantry,
+              shoppingList,
             });
+            await recordHouseholdActivity(
+              get(),
+              'joined',
+              household.name,
+              'household'
+            );
             return true;
           }
           return false;
@@ -316,11 +390,43 @@ export const useMultiUserStore = create<MultiUserStore>()(
       },
 
       leaveHousehold: async () => {
-        const { currentUser } = get();
+        const { currentUser, currentHousehold } = get();
         if (!currentUser) return;
 
-        await userService.leaveHousehold(currentUser.id);
-        set({ currentHousehold: null, users: [] });
+        const leavingHouseholdId = currentHousehold?.id;
+        const householdName = currentHousehold?.name;
+
+        await supabaseService.leaveHousehold(currentUser.id);
+        const updatedUser = await userService.getUserById(currentUser.id);
+        const pantry = await supabaseService.getGroceryItems(
+          currentUser.id,
+          undefined
+        );
+        const shoppingList = await supabaseService.getShoppingListItems(
+          currentUser.id,
+          undefined
+        );
+        set({
+          currentHousehold: null,
+          users: [],
+          currentUser: updatedUser || {
+            ...currentUser,
+            householdId: undefined,
+            household_id: undefined,
+          },
+          pantry,
+          shoppingList,
+        });
+        if (leavingHouseholdId && householdName) {
+          await logHouseholdActivity({
+            householdId: leavingHouseholdId,
+            userId: currentUser.id,
+            userName: currentUser.name,
+            action: 'left',
+            itemName: householdName,
+            itemType: 'household',
+          });
+        }
       },
 
       updateUserProfile: async (updates: Partial<User>) => {
@@ -393,6 +499,12 @@ export const useMultiUserStore = create<MultiUserStore>()(
               'added',
               newItem.name
             );
+            await recordHouseholdActivity(
+              get(),
+              'added',
+              newItem.name,
+              'pantry'
+            );
           }
         } catch (error) {
           console.error('Error adding grocery item:', error);
@@ -436,6 +548,12 @@ export const useMultiUserStore = create<MultiUserStore>()(
                 'updated',
                 updatedItem.name
               );
+              await recordHouseholdActivity(
+                get(),
+                'updated',
+                updatedItem.name,
+                'pantry'
+              );
             }
           }
         } catch (error) {
@@ -463,6 +581,12 @@ export const useMultiUserStore = create<MultiUserStore>()(
               'removed',
               itemToRemove.name
             );
+            await recordHouseholdActivity(
+              get(),
+              'removed',
+              itemToRemove.name,
+              'pantry'
+            );
           }
         } catch (error) {
           console.error('Error removing grocery item:', error);
@@ -485,6 +609,12 @@ export const useMultiUserStore = create<MultiUserStore>()(
               currentUser.name,
               'used',
               itemToMark.name
+            );
+            await recordHouseholdActivity(
+              get(),
+              'used',
+              itemToMark.name,
+              'pantry'
             );
           }
         } catch (error) {
@@ -587,6 +717,14 @@ export const useMultiUserStore = create<MultiUserStore>()(
 
           set(state => ({ shoppingList: [...state.shoppingList, newItem] }));
           console.log(`Added new item: ${item.name}`);
+          if (isShared && currentHousehold) {
+            await recordHouseholdActivity(
+              get(),
+              'added',
+              newItem.name,
+              'shopping'
+            );
+          }
         } catch (error) {
           console.error('Error adding shopping list item:', error);
           set({ error: 'Failed to add item' });
@@ -631,7 +769,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
       },
 
       toggleShoppingItemComplete: async id => {
-        const { currentUser } = get();
+        const { currentUser, currentHousehold } = get();
         if (!currentUser) return;
 
         try {
@@ -649,6 +787,18 @@ export const useMultiUserStore = create<MultiUserStore>()(
                   item.id === id ? updatedItem : item
                 ),
               }));
+              if (
+                updatedItem.isCompleted &&
+                updatedItem.isShared &&
+                currentHousehold
+              ) {
+                await recordHouseholdActivity(
+                  get(),
+                  'completed',
+                  updatedItem.name,
+                  'shopping'
+                );
+              }
             }
           }
         } catch (error) {
@@ -711,19 +861,45 @@ export const useMultiUserStore = create<MultiUserStore>()(
       },
 
       // Recipe Favorites Actions
-            toggleRecipeFavorite: async (recipeId: string) => {
+      ensureRecipePersisted: async (recipe: Recipe) => {
+        const { currentUser, currentHousehold } = get();
+        if (!currentUser) throw new Error('No authenticated user');
+
+        const { ensureRecipeInDatabase } = await import(
+          '../services/recipePersistenceService'
+        );
+        const householdId =
+          currentHousehold?.id ||
+          currentUser.householdId ||
+          currentUser.household_id;
+        return ensureRecipeInDatabase(recipe, currentUser.id, householdId);
+      },
+
+      toggleRecipeFavorite: async (recipeId: string, recipe?: Recipe) => {
         const { currentUser } = get();
         if (!currentUser) return;
 
         try {
-          const { recipeFavoritesService } = await import('../services/recipeFavoritesService');
-          const isFavorited = await recipeFavoritesService.toggleFavorite(currentUser.id, recipeId);
+          let dbRecipeId = recipeId;
+          if (recipe) {
+            dbRecipeId = await get().ensureRecipePersisted(recipe);
+          }
+
+          const { recipeFavoritesService } = await import(
+            '../services/recipeFavoritesService'
+          );
+          const isFavorited = await recipeFavoritesService.toggleFavorite(
+            currentUser.id,
+            dbRecipeId
+          );
 
           set(state => ({
             favoriteRecipes: isFavorited
-              ? [...state.favoriteRecipes, recipeId]
-              : state.favoriteRecipes.filter(id => id !== recipeId)
+              ? [...state.favoriteRecipes.filter(id => id !== dbRecipeId), dbRecipeId]
+              : state.favoriteRecipes.filter(id => id !== dbRecipeId),
           }));
+
+          return dbRecipeId;
         } catch (error) {
           console.error('Error toggling recipe favorite:', error);
           set({ error: 'Failed to update favorite' });

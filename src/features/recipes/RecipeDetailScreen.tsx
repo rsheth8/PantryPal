@@ -9,6 +9,8 @@ import {
   Image,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RecipesStackParamList } from '../../navigation/types';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
@@ -16,17 +18,16 @@ import { Recipe } from '../../types';
 import { colors, typography, spacing, borderRadius, shadows } from '../../utils/designSystem';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 
-type RecipeDetailRouteProp = RouteProp<{
-  RecipeDetail: { recipe: Recipe };
-}, 'RecipeDetail'>;
+type RecipeDetailRouteProp = RouteProp<RecipesStackParamList, 'RecipeDetail'>;
 
 export default function RecipeDetailScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<RecipesStackParamList>>();
   const route = useRoute<RecipeDetailRouteProp>();
   const { recipe } = route.params;
-  const { isRecipeFavorited, toggleRecipeFavorite, addMissingIngredientsToShoppingList } = useMultiUserStore();
+  const { isRecipeFavorited, toggleRecipeFavorite, addMissingIngredientsToShoppingList, ensureRecipePersisted } = useMultiUserStore();
 
   const [isFavorite, setIsFavorite] = useState(false);
+  const [persistedRecipeId, setPersistedRecipeId] = useState(recipe.id);
   const [servings, setServings] = useState(recipe.servings || 4);
 
   // Ensure recipe has missingIngredients property
@@ -38,8 +39,8 @@ export default function RecipeDetailScreen() {
 
   // Check if recipe is favorited on mount
   useEffect(() => {
-    setIsFavorite(isRecipeFavorited(recipe.id));
-  }, [recipe.id, isRecipeFavorited]);
+    setIsFavorite(isRecipeFavorited(persistedRecipeId));
+  }, [persistedRecipeId, isRecipeFavorited]);
 
   const handleAddToShoppingList = async () => {
     try {
@@ -73,26 +74,40 @@ export default function RecipeDetailScreen() {
     }
   };
 
-  const handleStartCooking = () => {
-    Alert.alert(
-      'Start Cooking',
-      `Ready to cook "${safeRecipe.title}"?`,
-      [
-        { text: 'Not yet', style: 'cancel' },
-        { 
-          text: 'Let\'s cook!', 
-          onPress: () => {
-            navigation.navigate('CookingMode' as never, { recipe: safeRecipe } as never);
-          }
-        }
-      ]
-    );
+  const handleStartCooking = async () => {
+    try {
+      const recipeId = await ensureRecipePersisted(safeRecipe);
+      const recipeForCooking = { ...safeRecipe, id: recipeId };
+      setPersistedRecipeId(recipeId);
+
+      Alert.alert(
+        'Start Cooking',
+        `Ready to cook "${safeRecipe.title}"?`,
+        [
+          { text: 'Not yet', style: 'cancel' },
+          {
+            text: "Let's cook!",
+            onPress: () => {
+              navigation.navigate('CookingMode', { recipe: recipeForCooking });
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error preparing cooking session:', error);
+      Alert.alert('Error', 'Failed to start cooking mode');
+    }
   };
 
   const toggleFavorite = async () => {
     try {
-      await toggleRecipeFavorite(safeRecipe.id);
-      setIsFavorite(!isFavorite);
+      const dbRecipeId = await toggleRecipeFavorite(safeRecipe.id, safeRecipe);
+      if (dbRecipeId) {
+        setPersistedRecipeId(dbRecipeId);
+        setIsFavorite(isRecipeFavorited(dbRecipeId));
+      } else {
+        setIsFavorite(!isFavorite);
+      }
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert('Error', 'Failed to update favorite');
@@ -156,7 +171,7 @@ export default function RecipeDetailScreen() {
         >
         {/* Recipe Image */}
         {safeRecipe.imageUrl && (
-          <PantryCard variant="elevated" padding="none" margin="none">
+          <PantryCard variant="elevated" padding="sm" margin="none">
             <Image source={{ uri: safeRecipe.imageUrl }} style={styles.recipeImage} />
           </PantryCard>
         )}

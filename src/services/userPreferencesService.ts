@@ -1,12 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { UserRecipePreferences, UserPreferences } from '../types';
-import { SUPABASE_CONFIG } from '../config/supabase';
-
-const SUPABASE_URL = SUPABASE_CONFIG.URL;
-const SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
-
-// Create Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase } from '../lib/supabaseClient';
 
 export class UserPreferencesService {
   private static instance: UserPreferencesService;
@@ -47,7 +40,10 @@ export class UserPreferencesService {
   /**
    * Save user recipe preferences (from onboarding quiz)
    */
-  async saveUserRecipePreferences(userId: string, preferences: Partial<UserRecipePreferences>): Promise<UserRecipePreferences> {
+  async saveUserRecipePreferences(
+    userId: string,
+    preferences: Record<string, unknown>
+  ): Promise<UserRecipePreferences> {
     try {
       const { data, error } = await supabase
         .from('user_recipe_preferences')
@@ -97,30 +93,49 @@ export class UserPreferencesService {
   /**
    * Convert UserPreferences to UserRecipePreferences format
    */
-  convertToRecipePreferences(userPreferences: UserPreferences): Partial<UserRecipePreferences> {
+  convertToRecipePreferences(
+    userPreferences: Partial<UserPreferences>
+  ): Record<string, unknown> {
+    const cookingTimeMap: Record<string, number> = {
+      quick: 30,
+      medium: 60,
+      slow: 120,
+    };
+    const spiceMap: Record<string, string> = {
+      mild: 'low',
+      medium: 'medium',
+      hot: 'high',
+    };
+
+    const preferredTime = userPreferences.preferredCookingTime || 'medium';
+
     return {
       dietary_restrictions: userPreferences.dietaryRestrictions || [],
       allergies: userPreferences.allergies || [],
       preferred_cuisines: userPreferences.preferredCuisines || [],
       cooking_skill: userPreferences.cookingSkill || 'beginner',
-      spice_tolerance: userPreferences.spiceTolerance || 'medium',
+      spice_tolerance:
+        spiceMap[userPreferences.spiceTolerance || 'medium'] || 'medium',
       health_goals: userPreferences.healthGoals || [],
       nutrition_goals: {
-        maxCalories: userPreferences.nutritionGoals?.maxCalories || 2000,
-        minProtein: userPreferences.nutritionGoals?.minProtein || 50,
-        maxCarbs: userPreferences.nutritionGoals?.maxCarbs || 250,
-        maxFat: userPreferences.nutritionGoals?.maxFat || 65,
+        maxCalories: userPreferences.calorieTarget || 2000,
+        minProtein: 50,
+        maxCarbs: 250,
+        maxFat: 65,
       },
-      difficulty_preference: userPreferences.difficultyPreference || 'any',
-      max_cooking_time: userPreferences.maxCookingTime || 60,
-      serving_size_preference: userPreferences.servingSizePreference || 4,
+      difficulty_preference: 'any',
+      max_cooking_time: cookingTimeMap[preferredTime] || 60,
+      serving_size_preference: userPreferences.preferredServings || 4,
     };
   }
 
   /**
    * Save preferences from onboarding quiz
    */
-  async saveOnboardingPreferences(userId: string, userPreferences: UserPreferences): Promise<UserRecipePreferences> {
+  async saveOnboardingPreferences(
+    userId: string,
+    userPreferences: Partial<UserPreferences>
+  ): Promise<UserRecipePreferences> {
     try {
       const recipePreferences = this.convertToRecipePreferences(userPreferences);
       return await this.saveUserRecipePreferences(userId, recipePreferences);

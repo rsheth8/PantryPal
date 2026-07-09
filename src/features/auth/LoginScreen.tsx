@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { authService } from '../../services/authService';
+import { authService, getAuthErrorMessage } from '../../services/authService';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -40,7 +40,7 @@ export default function LoginScreen({
         Alert.alert('Error', 'Invalid email or password.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Login failed. Please try again.');
+      Alert.alert('Error', getAuthErrorMessage(error));
     } finally {
       setIsLoading(false);
     }

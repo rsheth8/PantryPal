@@ -1,12 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { RecipeFavorite } from '../types';
-import { SUPABASE_CONFIG } from '../config/supabase';
-
-const SUPABASE_URL = SUPABASE_CONFIG.URL;
-const SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
-
-// Create Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase } from '../lib/supabaseClient';
 
 export class RecipeFavoritesService {
   private static instance: RecipeFavoritesService;

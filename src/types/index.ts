@@ -57,6 +57,7 @@ export interface Recipe {
   canCookNow: boolean;
   missingIngredients: string[];
   tags: string[];
+  description?: string;
   createdBy: string; // User ID
   householdId?: string; // null for private recipes
   isShared: boolean;

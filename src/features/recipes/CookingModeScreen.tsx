@@ -74,14 +74,19 @@ export default function CookingModeScreen() {
   }, [isTimerRunning]);
 
   const initializeCookingSession = async () => {
-    if (!currentUser || !currentHousehold) return;
+    if (!currentUser) return;
 
     try {
       setIsLoading(true);
+      const householdId =
+        currentHousehold?.id ||
+        currentUser.householdId ||
+        currentUser.household_id ||
+        null;
       const newSession = await cookingModeService.startCookingSession(
         currentUser.id,
         recipe.id,
-        currentHousehold.id
+        householdId
       );
       setSession(newSession);
 
@@ -101,15 +106,18 @@ export default function CookingModeScreen() {
     setIsTimerRunning(true);
   };
 
+  const activeStep = steps[currentStepIndex];
+
   // Check if current step needs a timer
-  const stepNeedsTimer = currentStep && currentStep.estimatedTime && currentStep.estimatedTime > 0;
-  
+  const stepNeedsTimer =
+    activeStep?.estimatedTime != null && activeStep.estimatedTime > 0;
+
   // Auto-start timer when step changes (if step has estimated time)
   useEffect(() => {
-    if (stepNeedsTimer && session?.status === 'active') {
-      startStepTimer(currentStep.estimatedTime * 60);
+    if (stepNeedsTimer && session?.status === 'active' && activeStep) {
+      startStepTimer(activeStep.estimatedTime! * 60);
     }
-  }, [currentStepIndex, session?.status]);
+  }, [currentStepIndex, session?.status, stepNeedsTimer, activeStep?.id]);
 
   const stopTimer = () => {
     setIsTimerRunning(false);
@@ -373,7 +381,7 @@ export default function CookingModeScreen() {
                 step.isCompleted && styles.completedStepNumber
               ]}>
                 <Text style={[
-                  styles.stepNumberText,
+                  styles.stepOverviewNumberText,
                   index === currentStepIndex && styles.currentStepNumberText,
                   step.isCompleted && styles.completedStepNumberText
                 ]}>
@@ -529,9 +537,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary[500],
   },
   completedStepNumber: {
-    backgroundColor: colors.success[100],
+    backgroundColor: colors.sage[100],
   },
-  stepNumberText: {
+  stepOverviewNumberText: {
     ...typography.bodySmall,
     color: colors.primary[700],
     fontWeight: '600',

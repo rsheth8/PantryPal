@@ -5,6 +5,7 @@ import DashboardScreen from '../features/dashboard/DashboardScreen';
 import PantryScreen from '../features/pantry/PantryScreen';
 import RecipesNavigator from './RecipesNavigator';
 import ShoppingListScreen from '../features/shoppingList/ShoppingListScreen';
+import HouseholdScreen from '../features/household/HouseholdScreen';
 import ScannerScreen from '../features/scanner/ScannerScreen';
 import SettingsScreen from '../features/settings/SettingsScreen';
 import { Text } from 'react-native';
@@ -81,6 +82,16 @@ export default function MainTabNavigator({ onSignOut }: MainTabNavigatorProps) {
           tabBarLabel: 'Shopping',
           tabBarIcon: ({ color, size }) => (
             <Text style={{ color, fontSize: size }}>🛒</Text>
+          ),
+        }}
+      />
+      <Tab.Screen
+        name='Household'
+        component={HouseholdScreen}
+        options={{
+          tabBarLabel: 'Household',
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ color, fontSize: size }}>🏠</Text>
           ),
         }}
       />

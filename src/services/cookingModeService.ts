@@ -1,12 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { CookingSession, CookingSessionStep, Recipe } from '../types';
-import { SUPABASE_CONFIG } from '../config/supabase';
-
-const SUPABASE_URL = SUPABASE_CONFIG.URL;
-const SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
-
-// Create Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase } from '../lib/supabaseClient';
 
 export class CookingModeService {
   private static instance: CookingModeService;
@@ -21,7 +14,11 @@ export class CookingModeService {
   /**
    * Start a new cooking session
    */
-  async startCookingSession(userId: string, recipeId: string, householdId: string): Promise<CookingSession> {
+  async startCookingSession(
+    userId: string,
+    recipeId: string,
+    householdId?: string | null
+  ): Promise<CookingSession> {
     try {
       // First, get the recipe to create steps
       const { data: recipe, error: recipeError } = await supabase
@@ -41,7 +38,7 @@ export class CookingModeService {
         .insert({
           user_id: userId,
           recipe_id: recipeId,
-          household_id: householdId,
+          household_id: householdId || null,
           status: 'active',
           current_step: 1,
           start_time: new Date().toISOString(),

@@ -60,9 +60,9 @@ export class AIChefService {
     const missingIngredients: string[] = [];
 
     // Check dietary restrictions
-    if (userPreferences.dietaryRestrictions.length > 0) {
+    if (userPreferences.dietaryRestrictions.length > 0 && recipe.diets) {
       const hasDietaryMatch = userPreferences.dietaryRestrictions.some(restriction =>
-        recipe.diets.includes(restriction.toLowerCase())
+        recipe.diets!.includes(restriction.toLowerCase())
       );
       if (hasDietaryMatch) {
         score += 20;
@@ -71,9 +71,9 @@ export class AIChefService {
     }
 
     // Check cuisine preferences
-    if (userPreferences.preferredCuisines.length > 0) {
+    if (userPreferences.preferredCuisines.length > 0 && recipe.cuisines) {
       const hasCuisineMatch = userPreferences.preferredCuisines.some(cuisine =>
-        recipe.cuisines.includes(cuisine.toLowerCase())
+        recipe.cuisines!.includes(cuisine.toLowerCase())
       );
       if (hasCuisineMatch) {
         score += 15;
@@ -81,14 +81,19 @@ export class AIChefService {
       }
     }
 
-    // Check cooking skill level
-    if (recipe.difficulty === userPreferences.cookingSkill) {
+    const skillToDifficulty: Record<string, string> = {
+      beginner: 'easy',
+      intermediate: 'medium',
+      advanced: 'hard',
+    };
+    const expectedDifficulty = skillToDifficulty[userPreferences.cookingSkill];
+    if (recipe.difficulty && recipe.difficulty === expectedDifficulty) {
       score += 10;
       reasons.push('Matches your cooking skill level');
     }
 
     // Check cooking time preferences
-    const recipeTime = recipe.prepTime + recipe.cookTime;
+    const recipeTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
     if (userPreferences.preferredCookingTime === 'quick' && recipeTime <= 30) {
       score += 10;
       reasons.push('Quick to prepare');

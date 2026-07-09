@@ -4,14 +4,13 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   TextInput,
   Alert,
   Image,
   FlatList,
   Modal,
-  KeyboardAvoidingView,
-  Platform,
+  Share,
+  Switch,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
@@ -24,6 +23,12 @@ import {
   borderRadius,
   shadows,
 } from '../../utils/designSystem';
+import {
+  getHouseholdActivity,
+  formatActivityMessage,
+  getActivityIcon,
+  HouseholdActivityEntry,
+} from '../../services/householdActivityService';
 
 export default function HouseholdScreen() {
   const {
@@ -31,8 +36,11 @@ export default function HouseholdScreen() {
     currentHousehold,
     users,
     pantry,
+    createHousehold,
+    joinHousehold,
     leaveHousehold,
     updateUserProfile,
+    updateHouseholdSettings,
   } = useMultiUserStore();
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -46,18 +54,133 @@ export default function HouseholdScreen() {
   const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
   const [isActivityFeedVisible, setIsActivityFeedVisible] = useState(false);
   const [isDevSwitcherVisible, setIsDevSwitcherVisible] = useState(false);
+  const [householdName, setHouseholdName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [allowPrivateItems, setAllowPrivateItems] = useState(
+    currentHousehold?.settings?.allow_private_items ?? true
+  );
+  const [activities, setActivities] = useState<HouseholdActivityEntry[]>([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
 
-  // Check if user has a household
-  const hasHousehold = currentUser?.householdId && currentHousehold;
+  const householdId = currentUser?.householdId || currentUser?.household_id;
+  const hasHousehold = !!(householdId && currentHousehold);
 
-  // Debug logging
   useEffect(() => {
-    console.log('HouseholdScreen Debug:');
-    console.log('- currentUser:', currentUser);
-    console.log('- currentHousehold:', currentHousehold);
-    console.log('- users:', users);
-    console.log('- hasHousehold:', hasHousehold);
-  }, [currentUser, currentHousehold, users, hasHousehold]);
+    setProfileUpdates({
+      name: currentUser?.name || '',
+      email: currentUser?.email || '',
+    });
+  }, [currentUser]);
+
+  useEffect(() => {
+    setAllowPrivateItems(
+      currentHousehold?.settings?.allow_private_items ?? true
+    );
+  }, [currentHousehold]);
+
+  useEffect(() => {
+    if (isActivityFeedVisible && currentHousehold) {
+      loadActivityFeed();
+    }
+  }, [isActivityFeedVisible, currentHousehold?.id]);
+
+  const loadActivityFeed = async () => {
+    if (!currentHousehold) return;
+    setLoadingActivity(true);
+    try {
+      const data = await getHouseholdActivity(currentHousehold.id);
+      setActivities(data);
+    } finally {
+      setLoadingActivity(false);
+    }
+  };
+
+  const formatActivityTime = (iso: string) => {
+    const date = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString();
+  };
+
+  const handleCreateHousehold = async () => {
+    if (!householdName.trim()) {
+      Alert.alert('Error', 'Please enter a household name.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createHousehold(householdName.trim());
+      setIsCreateModalVisible(false);
+      setHouseholdName('');
+      Alert.alert('Success', 'Household created! Share your code to invite others.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create household. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleJoinHousehold = async () => {
+    if (!joinCode.trim()) {
+      Alert.alert('Error', 'Please enter a household code.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const joined = await joinHousehold(joinCode.trim().toUpperCase());
+      if (joined) {
+        setIsJoinModalVisible(false);
+        setJoinCode('');
+        Alert.alert('Success', 'You joined the household!');
+      } else {
+        Alert.alert('Error', 'Invalid household code. Please check and try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to join household.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleShareInvite = async () => {
+    if (!currentHousehold) return;
+
+    try {
+      await Share.share({
+        message: `Join my PantryPal household "${currentHousehold.name}" with code: ${currentHousehold.code}`,
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Could not share invite.');
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!currentHousehold) return;
+
+    setIsSubmitting(true);
+    try {
+      await updateHouseholdSettings(currentHousehold.id, {
+        settings: {
+          ...currentHousehold.settings,
+          allow_private_items: allowPrivateItems,
+        },
+      });
+      setIsSettingsModalVisible(false);
+      Alert.alert('Success', 'Household settings updated.');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update settings.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleLeaveHousehold = () => {
     Alert.alert(
@@ -340,7 +463,6 @@ export default function HouseholdScreen() {
         </View>
       </Modal>
 
-      {/* Placeholder Modals */}
       {isJoinModalVisible && (
         <Modal
           visible={isJoinModalVisible}
@@ -357,15 +479,25 @@ export default function HouseholdScreen() {
             />
             <View style={styles.modalContent}>
               <PantryCard variant='elevated' padding='lg'>
-                <Text style={styles.modalPlaceholder}>
-                  Join household functionality coming soon!
-                </Text>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Household Code</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={joinCode}
+                    onChangeText={setJoinCode}
+                    placeholder='e.g. ABC123'
+                    placeholderTextColor={colors.neutral[400]}
+                    autoCapitalize='characters'
+                    maxLength={6}
+                  />
+                </View>
                 <PantryButton
-                  title='Close'
-                  onPress={() => setIsJoinModalVisible(false)}
+                  title={isSubmitting ? 'Joining...' : 'Join Household'}
+                  onPress={handleJoinHousehold}
                   variant='primary'
                   size='md'
                   fullWidth
+                  disabled={isSubmitting}
                 />
               </PantryCard>
             </View>
@@ -389,15 +521,23 @@ export default function HouseholdScreen() {
             />
             <View style={styles.modalContent}>
               <PantryCard variant='elevated' padding='lg'>
-                <Text style={styles.modalPlaceholder}>
-                  Create household functionality coming soon!
-                </Text>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Household Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={householdName}
+                    onChangeText={setHouseholdName}
+                    placeholder='e.g. The Sheth Family'
+                    placeholderTextColor={colors.neutral[400]}
+                  />
+                </View>
                 <PantryButton
-                  title='Close'
-                  onPress={() => setIsCreateModalVisible(false)}
+                  title={isSubmitting ? 'Creating...' : 'Create Household'}
+                  onPress={handleCreateHousehold}
                   variant='primary'
                   size='md'
                   fullWidth
+                  disabled={isSubmitting}
                 />
               </PantryCard>
             </View>
@@ -421,15 +561,19 @@ export default function HouseholdScreen() {
             />
             <View style={styles.modalContent}>
               <PantryCard variant='elevated' padding='lg'>
-                <Text style={styles.modalPlaceholder}>
-                  Invite members functionality coming soon!
+                <Text style={styles.inviteLabel}>Your household code</Text>
+                <Text style={styles.inviteCode}>{currentHousehold?.code}</Text>
+                <Text style={styles.inviteHint}>
+                  Share this code with family or roommates so they can join your
+                  household and see shared pantry items.
                 </Text>
                 <PantryButton
-                  title='Close'
-                  onPress={() => setIsInviteModalVisible(false)}
+                  title='Share Code'
+                  onPress={handleShareInvite}
                   variant='primary'
                   size='md'
                   fullWidth
+                  icon='📤'
                 />
               </PantryCard>
             </View>
@@ -453,15 +597,30 @@ export default function HouseholdScreen() {
             />
             <View style={styles.modalContent}>
               <PantryCard variant='elevated' padding='lg'>
-                <Text style={styles.modalPlaceholder}>
-                  Household settings functionality coming soon!
-                </Text>
+                <View style={styles.settingRow}>
+                  <View style={styles.settingText}>
+                    <Text style={styles.settingTitle}>Allow private items</Text>
+                    <Text style={styles.settingDescription}>
+                      Members can keep personal pantry items hidden from the
+                      household.
+                    </Text>
+                  </View>
+                  <Switch
+                    value={allowPrivateItems}
+                    onValueChange={setAllowPrivateItems}
+                    trackColor={{
+                      false: colors.neutral[300],
+                      true: colors.primary[400],
+                    }}
+                  />
+                </View>
                 <PantryButton
-                  title='Close'
-                  onPress={() => setIsSettingsModalVisible(false)}
+                  title={isSubmitting ? 'Saving...' : 'Save Settings'}
+                  onPress={handleSaveSettings}
                   variant='primary'
                   size='md'
                   fullWidth
+                  disabled={isSubmitting || !hasHousehold}
                 />
               </PantryCard>
             </View>
@@ -485,16 +644,30 @@ export default function HouseholdScreen() {
             />
             <View style={styles.modalContent}>
               <PantryCard variant='elevated' padding='lg'>
-                <Text style={styles.modalPlaceholder}>
-                  Activity feed functionality coming soon!
-                </Text>
-                <PantryButton
-                  title='Close'
-                  onPress={() => setIsActivityFeedVisible(false)}
-                  variant='primary'
-                  size='md'
-                  fullWidth
-                />
+                {loadingActivity ? (
+                  <Text style={styles.inviteHint}>Loading activity...</Text>
+                ) : activities.length === 0 ? (
+                  <Text style={styles.inviteHint}>
+                    No activity yet. Shared pantry and shopping updates will
+                    appear here.
+                  </Text>
+                ) : (
+                  activities.map(entry => (
+                    <View key={entry.id} style={styles.activityRow}>
+                      <Text style={styles.activityIcon}>
+                        {getActivityIcon(entry)}
+                      </Text>
+                      <View style={styles.activityContent}>
+                        <Text style={styles.activityMessage}>
+                          {formatActivityMessage(entry)}
+                        </Text>
+                        <Text style={styles.activityTime}>
+                          {formatActivityTime(entry.createdAt)}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                )}
               </PantryCard>
             </View>
           </View>
@@ -689,5 +862,72 @@ const styles = StyleSheet.create({
     color: colors.neutral[600],
     textAlign: 'center',
     marginBottom: spacing.lg,
+  },
+  inviteLabel: {
+    ...typography.body,
+    color: colors.neutral[600],
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  inviteCode: {
+    ...typography.h2,
+    color: colors.primary[700],
+    textAlign: 'center',
+    fontFamily: 'monospace',
+    letterSpacing: 4,
+    marginBottom: spacing.md,
+  },
+  inviteHint: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  settingText: {
+    flex: 1,
+  },
+  settingTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.neutral[800],
+    marginBottom: spacing.xs,
+  },
+  settingDescription: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+  },
+  activityItem: {
+    ...typography.body,
+    color: colors.neutral[700],
+    marginBottom: spacing.sm,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  activityIcon: {
+    fontSize: 20,
+    marginTop: 2,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityMessage: {
+    ...typography.body,
+    color: colors.neutral[800],
+    marginBottom: spacing.xs,
+  },
+  activityTime: {
+    ...typography.caption,
+    color: colors.neutral[500],
   },
 });

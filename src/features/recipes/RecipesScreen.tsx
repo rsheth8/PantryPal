@@ -11,6 +11,8 @@ import {
   Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RecipesStackParamList } from '../../navigation/types';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
@@ -24,7 +26,7 @@ import {
 } from '../../utils/designSystem';
 
 export default function RecipesScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<StackNavigationProp<RecipesStackParamList>>();
   const { recipes, pantry, addMissingIngredientsToShoppingList, isRecipeFavorited, favoriteRecipes } = useMultiUserStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<
@@ -34,7 +36,7 @@ export default function RecipesScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
 
   const handleRecipePress = (recipe: any) => {
-    navigation.navigate('RecipeDetail' as never, { recipe } as never);
+    navigation.navigate('RecipeDetail', { recipe });
   };
 
   const handleCookRecipe = (recipe: any) => {
@@ -42,7 +44,7 @@ export default function RecipesScreen() {
       Alert.alert('Cannot Cook', 'You need to add missing ingredients first.');
       return;
     }
-    navigation.navigate('CookingMode' as never, { recipe } as never);
+    navigation.navigate('CookingMode', { recipe });
   };
 
   const handleAddMissingIngredients = async (recipe: any) => {

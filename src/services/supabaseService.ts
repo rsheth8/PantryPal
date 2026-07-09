@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import {
   User,
   Household,
@@ -9,14 +8,7 @@ import {
 } from '../types';
 import { generateId } from '../utils/helpers';
 import { isDevMode, getCurrentDevUser } from '../config/dev';
-
-import { SUPABASE_CONFIG } from '../config/supabase';
-
-const SUPABASE_URL = SUPABASE_CONFIG.URL;
-const SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
-
-// Create Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase } from '../lib/supabaseClient';
 
 export interface SupabaseUser {
   id: string;
@@ -335,10 +327,20 @@ class SupabaseService {
     const { data: household, error: householdError } = await supabase
       .from('households')
       .select('*')
-      .eq('code', householdCode)
+      .eq('code', householdCode.trim().toUpperCase())
       .single();
 
     if (householdError || !household) return null;
+
+    if (household.members.includes(userId)) {
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ household_id: household.id })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
+      return this.convertSupabaseHouseholdToHousehold(household);
+    }
 
     // Add user to household members
     const updatedMembers = [...household.members, userId];
@@ -361,6 +363,81 @@ class SupabaseService {
     if (updateError) throw updateError;
 
     return this.convertSupabaseHouseholdToHousehold(data);
+  }
+
+  async leaveHousehold(userId: string): Promise<void> {
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('household_id')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user?.household_id) {
+      await supabase.from('users').update({ household_id: null }).eq('id', userId);
+      return;
+    }
+
+    const { data: household } = await supabase
+      .from('households')
+      .select('members')
+      .eq('id', user.household_id)
+      .single();
+
+    if (household) {
+      const updatedMembers = household.members.filter(
+        (memberId: string) => memberId !== userId
+      );
+      await supabase
+        .from('households')
+        .update({ members: updatedMembers })
+        .eq('id', user.household_id);
+    }
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ household_id: null })
+      .eq('id', userId);
+
+    if (updateError) throw updateError;
+  }
+
+  async updateHouseholdSettings(
+    householdId: string,
+    settings: Partial<Household['settings']>
+  ): Promise<Household | null> {
+    const { data: existing, error: fetchError } = await supabase
+      .from('households')
+      .select('settings')
+      .eq('id', householdId)
+      .single();
+
+    if (fetchError || !existing) return null;
+
+    const mergedSettings = {
+      ...existing.settings,
+      ...(settings.allow_private_items !== undefined && {
+        allow_private_items: settings.allow_private_items,
+      }),
+      ...(settings.allowPrivateItems !== undefined && {
+        allow_private_items: settings.allowPrivateItems,
+      }),
+      ...(settings.require_approval_for_shared !== undefined && {
+        require_approval_for_shared: settings.require_approval_for_shared,
+      }),
+      ...(settings.default_item_visibility !== undefined && {
+        default_item_visibility: settings.default_item_visibility,
+      }),
+    };
+
+    const { data, error } = await supabase
+      .from('households')
+      .update({ settings: mergedSettings })
+      .eq('id', householdId)
+      .select()
+      .single();
+
+    if (error) return null;
+    return data ? this.convertSupabaseHouseholdToHousehold(data) : null;
   }
 
   async getHouseholdMembers(householdId: string): Promise<User[]> {

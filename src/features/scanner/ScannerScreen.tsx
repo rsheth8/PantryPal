@@ -6,12 +6,18 @@ import {
   Alert,
   TextInput,
   Modal,
+  ActivityIndicator,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
+import { lookupBarcode } from '../../services/barcodeService';
 import {
   colors,
   typography,
@@ -21,17 +27,75 @@ import {
 
 export default function ScannerScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<any>>();
+  const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [scanned, setScanned] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualItemName, setManualItemName] = useState('');
+  const [recentScans, setRecentScans] = useState<string[]>([]);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoItemName, setPhotoItemName] = useState('');
 
-  const handleStartScan = () => {
+  const navigateToPantry = (name: string) => {
+    navigation.navigate('Pantry', {
+      prefillName: name,
+      showAddModal: true,
+    });
+  };
+
+  const handleStartScan = async () => {
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert(
+          'Camera Permission',
+          'Camera access is required to scan barcodes.'
+        );
+        return;
+      }
+    }
+    setScanned(false);
     setIsScanning(true);
-    Alert.alert(
-      'Coming Soon',
-      'Barcode scanning will be available in a future update. Use Manual Entry for now.'
-    );
-    setIsScanning(false);
+  };
+
+  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+    if (scanned || isLookingUp) return;
+
+    setScanned(true);
+    setIsLookingUp(true);
+
+    try {
+      const product = await lookupBarcode(data);
+      const itemName = product?.name || `Barcode ${data}`;
+
+      setRecentScans(prev => [itemName, ...prev.filter(n => n !== itemName)].slice(0, 5));
+      setIsScanning(false);
+
+      Alert.alert(
+        'Product Found',
+        `Add "${itemName}" to your pantry?`,
+        [
+          {
+            text: 'Scan Again',
+            onPress: () => {
+              setScanned(false);
+              setIsScanning(true);
+            },
+          },
+          {
+            text: 'Add to Pantry',
+            onPress: () => navigateToPantry(itemName),
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Could not look up product. Try manual entry.');
+      setScanned(false);
+    } finally {
+      setIsLookingUp(false);
+    }
   };
 
   const handleManualEntry = () => {
@@ -45,15 +109,73 @@ export default function ScannerScreen() {
       return;
     }
     setShowManualModal(false);
-    navigation.navigate('Pantry', {
-      prefillName: manualItemName.trim(),
-      showAddModal: true,
-    });
+    navigateToPantry(manualItemName.trim());
     setManualItemName('');
   };
 
-  const handlePhotoScan = () => {
-    Alert.alert('Coming Soon', 'Photo scanning will be available in a future update.');
+  const handlePhotoScan = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Camera Permission',
+        'Camera access is required to photograph items.'
+      );
+      return;
+    }
+
+    Alert.alert('Photo Scan', 'How would you like to add a photo?', [
+      {
+        text: 'Take Photo',
+        onPress: async () => {
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            quality: 0.8,
+            allowsEditing: true,
+          });
+          if (!result.canceled && result.assets[0]) {
+            openPhotoReview(result.assets[0].uri);
+          }
+        },
+      },
+      {
+        text: 'Choose from Library',
+        onPress: async () => {
+          const library = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (library.status !== 'granted') {
+            Alert.alert('Permission', 'Photo library access is required.');
+            return;
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.8,
+            allowsEditing: true,
+          });
+          if (!result.canceled && result.assets[0]) {
+            openPhotoReview(result.assets[0].uri);
+          }
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const openPhotoReview = (uri: string) => {
+    setPhotoUri(uri);
+    setPhotoItemName('');
+    setShowPhotoModal(true);
+  };
+
+  const handlePhotoSubmit = () => {
+    if (!photoItemName.trim()) {
+      Alert.alert('Error', 'Please enter an item name');
+      return;
+    }
+    const name = photoItemName.trim();
+    setRecentScans(prev => [name, ...prev.filter(n => n !== name)].slice(0, 5));
+    setShowPhotoModal(false);
+    setPhotoUri(null);
+    navigateToPantry(name);
+    setPhotoItemName('');
   };
 
   return (
@@ -65,20 +187,48 @@ export default function ScannerScreen() {
       />
 
       <View style={styles.content}>
-        {/* Scanner Preview */}
-        <PantryCard variant='elevated' padding='xl'>
-          <View style={styles.scannerPreview}>
-            <Text style={styles.scannerIcon}>📱</Text>
-            <Text style={styles.scannerText}>
-              {isScanning ? 'Scanning...' : 'Ready to scan'}
-            </Text>
-            <Text style={styles.scannerSubtext}>
-              Point your camera at a barcode
-            </Text>
-          </View>
+        <PantryCard variant='elevated' padding={isScanning ? 'sm' : 'xl'}>
+          {isScanning ? (
+            <View style={styles.cameraContainer}>
+              <View style={styles.cameraWrapper}>
+                <CameraView
+                  style={styles.camera}
+                  facing='back'
+                  barcodeScannerSettings={{
+                    barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e', 'code128'],
+                  }}
+                  onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+                />
+                {isLookingUp && (
+                  <View style={styles.lookupOverlay}>
+                    <ActivityIndicator size='large' color='#fff' />
+                    <Text style={styles.lookupText}>Looking up product...</Text>
+                  </View>
+                )}
+                <View style={styles.scanFrame} pointerEvents='none' />
+              </View>
+              <PantryButton
+                title='Cancel'
+                onPress={() => {
+                  setIsScanning(false);
+                  setScanned(false);
+                }}
+                variant='outline'
+                size='sm'
+                fullWidth
+              />
+            </View>
+          ) : (
+            <View style={styles.scannerPreview}>
+              <Text style={styles.scannerIcon}>📱</Text>
+              <Text style={styles.scannerText}>Ready to scan</Text>
+              <Text style={styles.scannerSubtext}>
+                Point your camera at a barcode
+              </Text>
+            </View>
+          )}
         </PantryCard>
 
-        {/* Scan Options */}
         <PantryCard variant='fresh' padding='lg'>
           <Text style={styles.sectionTitle}>🔍 Scan Options</Text>
 
@@ -115,50 +265,22 @@ export default function ScannerScreen() {
           </View>
         </PantryCard>
 
-        {/* Recent Scans */}
         <PantryCard variant='warm' padding='lg'>
           <Text style={styles.sectionTitle}>🕒 Recent Scans</Text>
-          <View style={styles.recentCard}>
-            <Text style={styles.recentTitle}>No recent scans</Text>
-            <Text style={styles.recentSubtext}>
-              Your scanned items will appear here
-            </Text>
-          </View>
-        </PantryCard>
-
-        {/* Tips */}
-        <PantryCard variant='outlined' padding='lg'>
-          <Text style={styles.sectionTitle}>💡 Tips</Text>
-
-          <View style={styles.tipCard}>
-            <Text style={styles.tipIcon}>🎯</Text>
-            <View style={styles.tipContent}>
-              <Text style={styles.tipTitle}>Hold Steady</Text>
-              <Text style={styles.tipText}>
-                Keep your phone steady when scanning barcodes for best results
+          {recentScans.length === 0 ? (
+            <View style={styles.recentCard}>
+              <Text style={styles.recentTitle}>No recent scans</Text>
+              <Text style={styles.recentSubtext}>
+                Your scanned items will appear here
               </Text>
             </View>
-          </View>
-
-          <View style={styles.tipCard}>
-            <Text style={styles.tipIcon}>💡</Text>
-            <View style={styles.tipContent}>
-              <Text style={styles.tipTitle}>Good Lighting</Text>
-              <Text style={styles.tipText}>
-                Ensure good lighting for accurate barcode recognition
+          ) : (
+            recentScans.map(item => (
+              <Text key={item} style={styles.recentItem}>
+                • {item}
               </Text>
-            </View>
-          </View>
-
-          <View style={styles.tipCard}>
-            <Text style={styles.tipIcon}>📱</Text>
-            <View style={styles.tipContent}>
-              <Text style={styles.tipTitle}>Manual Entry</Text>
-              <Text style={styles.tipText}>
-                Use manual entry for items without barcodes or damaged labels
-              </Text>
-            </View>
-          </View>
+            ))
+          )}
         </PantryCard>
       </View>
 
@@ -193,6 +315,49 @@ export default function ScannerScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={showPhotoModal} animationType='slide' transparent>
+        <View style={styles.modalOverlay}>
+          <ScrollView contentContainerStyle={styles.photoModalScroll}>
+            <View style={styles.modalContent}>
+              <PantryCard variant='elevated' padding='lg'>
+                <Text style={styles.modalTitle}>Photo Scan</Text>
+                {photoUri && (
+                  <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                )}
+                <Text style={styles.photoHint}>
+                  Name the item in your photo, then add it to your pantry.
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder='Item name (e.g. Greek yogurt)'
+                  value={photoItemName}
+                  onChangeText={setPhotoItemName}
+                  placeholderTextColor={colors.neutral[400]}
+                  autoFocus
+                />
+                <View style={styles.modalActions}>
+                  <PantryButton
+                    title='Cancel'
+                    onPress={() => {
+                      setShowPhotoModal(false);
+                      setPhotoUri(null);
+                    }}
+                    variant='outline'
+                    size='md'
+                  />
+                  <PantryButton
+                    title='Add to Pantry'
+                    onPress={handlePhotoSubmit}
+                    variant='primary'
+                    size='md'
+                  />
+                </View>
+              </PantryCard>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -205,6 +370,43 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: spacing.md,
+  },
+  cameraContainer: {
+    gap: spacing.sm,
+  },
+  cameraWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: 280,
+  },
+  camera: {
+    width: '100%',
+    height: '100%',
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+  },
+  lookupOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.lg,
+  },
+  lookupText: {
+    ...typography.body,
+    color: '#fff',
+    marginTop: spacing.sm,
+  },
+  scanFrame: {
+    position: 'absolute',
+    top: 80,
+    left: '15%',
+    width: '70%',
+    height: 120,
+    borderWidth: 2,
+    borderColor: colors.primary[400],
+    borderRadius: borderRadius.md,
+    zIndex: 2,
   },
   scannerPreview: {
     alignItems: 'center',
@@ -248,28 +450,10 @@ const styles = StyleSheet.create({
     color: colors.neutral[500],
     textAlign: 'center',
   },
-  tipCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  tipIcon: {
-    fontSize: 24,
-    marginRight: spacing.sm,
-    marginTop: 2,
-  },
-  tipContent: {
-    flex: 1,
-  },
-  tipTitle: {
+  recentItem: {
     ...typography.body,
-    fontWeight: '600',
-    color: colors.neutral[800],
+    color: colors.neutral[700],
     marginBottom: spacing.xs,
-  },
-  tipText: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
   },
   modalOverlay: {
     flex: 1,
@@ -302,5 +486,23 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  photoModalScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: spacing.md,
+  },
+  photoPreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+    backgroundColor: colors.neutral[200],
+  },
+  photoHint: {
+    ...typography.bodySmall,
+    color: colors.neutral[600],
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
 });

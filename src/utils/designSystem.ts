@@ -262,6 +262,18 @@ export const typography = {
     lineHeight: 24,
     letterSpacing: 0,
   },
+  bodyLarge: {
+    fontSize: 18,
+    fontWeight: '400' as const,
+    lineHeight: 28,
+    letterSpacing: 0,
+  },
+  bodyMedium: {
+    fontSize: 16,
+    fontWeight: '500' as const,
+    lineHeight: 24,
+    letterSpacing: 0,
+  },
   bodySmall: {
     fontSize: 14,
     fontWeight: '400' as const,

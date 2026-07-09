@@ -21,6 +21,12 @@ import {
   shadows,
   pantryTokens,
 } from '../../utils/designSystem';
+import {
+  getHouseholdActivity,
+  formatActivityMessage,
+  getActivityIcon,
+  HouseholdActivityEntry,
+} from '../../services/householdActivityService';
 
 export default function DashboardScreen() {
   const navigation = useNavigation<BottomTabNavigationProp<any>>();
@@ -42,11 +48,27 @@ export default function DashboardScreen() {
     canCookNow: 0,
     shoppingItems: 0,
   });
+  const [recentActivity, setRecentActivity] = useState<HouseholdActivityEntry[]>([]);
+
+  const loadRecentActivity = async () => {
+    if (!currentHousehold) {
+      setRecentActivity([]);
+      return;
+    }
+    const data = await getHouseholdActivity(currentHousehold.id, 5);
+    setRecentActivity(data);
+  };
 
   useFocusEffect(
     React.useCallback(() => {
       calculateStats();
     }, [pantry, recipes, shoppingList])
+  );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadRecentActivity();
+    }, [currentHousehold?.id])
   );
 
   const calculateStats = () => {
@@ -230,12 +252,32 @@ export default function DashboardScreen() {
         {/* Recent Activity */}
         <PantryCard variant='default' padding='lg'>
           <Text style={styles.sectionTitle}>🕒 Recent Activity</Text>
-          <View style={styles.activityItem}>
-            <Text style={styles.activityText}>No recent activity</Text>
-            <Text style={styles.activitySubtext}>
-              Your household activity will appear here
-            </Text>
-          </View>
+          {!currentHousehold ? (
+            <View style={styles.activityItem}>
+              <Text style={styles.activityText}>Join a household to see activity</Text>
+              <Text style={styles.activitySubtext}>
+                Create or join a household from the Household tab
+              </Text>
+            </View>
+          ) : recentActivity.length === 0 ? (
+            <View style={styles.activityItem}>
+              <Text style={styles.activityText}>No recent activity</Text>
+              <Text style={styles.activitySubtext}>
+                Shared pantry and shopping updates will appear here
+              </Text>
+            </View>
+          ) : (
+            recentActivity.map(entry => (
+              <View key={entry.id} style={styles.activityRow}>
+                <Text style={styles.activityEmoji}>{getActivityIcon(entry)}</Text>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityText}>
+                    {formatActivityMessage(entry)}
+                  </Text>
+                </View>
+              </View>
+            ))
+          )}
         </PantryCard>
       </ScrollView>
     </View>
@@ -344,6 +386,19 @@ const styles = StyleSheet.create({
   activityItem: {
     alignItems: 'center',
     paddingVertical: spacing.md,
+  },
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  activityEmoji: {
+    fontSize: 18,
+    marginTop: 2,
+  },
+  activityContent: {
+    flex: 1,
   },
   activityText: {
     ...typography.body,

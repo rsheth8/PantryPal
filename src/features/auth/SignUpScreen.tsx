@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { authService } from '../../services/authService';
+import { authService, getAuthErrorMessage } from '../../services/authService';
 
 interface SignUpScreenProps {
   onSignUpSuccess: () => void;
@@ -61,7 +61,7 @@ export default function SignUpScreen({
         Alert.alert('Error', 'Sign up failed. Please try again.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Sign up failed. Please try again.');
+      Alert.alert('Error', getAuthErrorMessage(error));
     } finally {
       setIsLoading(false);
     }

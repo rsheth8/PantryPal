@@ -23,8 +23,20 @@
       },
       "edgeToEdgeEnabled": true
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    }
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow PantryPal to access your camera to scan barcodes."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow PantryPal to access your photos to scan grocery items.",
+          "cameraPermission": "Allow PantryPal to take photos of grocery items."
+        }
+      ]
+    ]
   }
 }

@@ -117,6 +117,43 @@ class RecipeService {
     }
   }
 
+  async searchRecipes(query: string): Promise<Recipe[]> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+
+    try {
+      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+        return this.mockRecipeSearch(trimmed.split(/\s+/));
+      }
+
+      const data = await this.callSpoonacularAPI('/complexSearch', {
+        query: trimmed,
+        number: 15,
+        addRecipeInformation: true,
+        fillIngredients: true,
+        instructionsRequired: true,
+      });
+
+      if (!data.results?.length) return [];
+
+      const detailedRecipes = await Promise.all(
+        data.results.map(async (recipe: SpoonacularRecipe) => {
+          try {
+            const details = await this.getRecipeDetails(recipe.id);
+            return details || this.convertSpoonacularToRecipe(recipe);
+          } catch {
+            return this.convertSpoonacularToRecipe(recipe);
+          }
+        })
+      );
+
+      return detailedRecipes.filter(Boolean) as Recipe[];
+    } catch (error) {
+      console.error('Recipe text search error:', error);
+      return this.mockRecipeSearch(trimmed.split(/\s+/));
+    }
+  }
+
   async getRecipeDetails(recipeId: number): Promise<Recipe | null> {
     try {
       if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
@@ -147,7 +184,7 @@ class RecipeService {
     const equipment = this.extractEquipment(spoonacularRecipe);
 
     return {
-      id: generateId(),
+      id: String(spoonacularRecipe.id),
       title: spoonacularRecipe.title,
       ingredients,
       instructions,

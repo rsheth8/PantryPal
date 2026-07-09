@@ -2,6 +2,14 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { GroceryItem } from '../types';
 
+function dateTrigger(date: Date): Notifications.NotificationTriggerInput {
+  return { type: 'date', date } as Notifications.NotificationTriggerInput;
+}
+
+function intervalTrigger(seconds: number): Notifications.NotificationTriggerInput {
+  return { type: 'timeInterval', seconds } as Notifications.NotificationTriggerInput;
+}
+
 // Configure notification behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -116,7 +124,7 @@ class NotificationService {
             body: `${item.name} expires in ${daysUntilExpiration} days`,
             data: { type: 'expiration', itemId: item.id },
           },
-          trigger: { date: trigger },
+          trigger: dateTrigger(trigger),
         });
       }
     } catch (error) {
@@ -145,7 +153,7 @@ class NotificationService {
               currentQuantity: item.quantity,
             },
           },
-          trigger: { date: trigger },
+          trigger: dateTrigger(trigger),
         });
       }
     } catch (error) {
@@ -177,7 +185,7 @@ class NotificationService {
             itemName,
           },
         },
-        trigger: { date: trigger },
+        trigger: dateTrigger(trigger),
       });
     } catch (error) {
       console.error('Failed to schedule household notification:', error);
@@ -202,7 +210,7 @@ class NotificationService {
           body: 'Time to check your pantry and update your shopping list!',
           data: { type: 'shopping_reminder' },
         },
-        trigger: { date: trigger },
+        trigger: dateTrigger(trigger),
       });
     } catch (error) {
       console.error('Failed to schedule shopping reminder:', error);
@@ -247,7 +255,7 @@ class NotificationService {
           body: 'This is a test notification from PantryPal!',
           data: { type: 'general' },
         },
-        trigger: { seconds: 2 },
+        trigger: intervalTrigger(2),
       });
     } catch (error) {
       console.error('Failed to send test notification:', error);

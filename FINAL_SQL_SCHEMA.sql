@@ -1,9 +1,24 @@
 -- PantryPal Database Schema (Final Version)
 -- Copy and paste this entire block into Supabase SQL Editor
+-- Safe to run on a fresh database or re-run idempotently
 
--- Drop existing triggers if they exist
-DROP TRIGGER IF EXISTS update_grocery_items_updated_at ON grocery_items;
-DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON user_preferences;
+-- Drop existing triggers only if their tables exist (fresh DB has no tables yet)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'grocery_items'
+  ) THEN
+    DROP TRIGGER IF EXISTS update_grocery_items_updated_at ON grocery_items;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'user_preferences'
+  ) THEN
+    DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON user_preferences;
+  END IF;
+END $$;
 
 -- Drop existing functions if they exist
 DROP FUNCTION IF EXISTS update_updated_at_column();
@@ -246,12 +261,14 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for updated_at
-CREATE TRIGGER update_grocery_items_updated_at 
-  BEFORE UPDATE ON grocery_items 
+DROP TRIGGER IF EXISTS update_grocery_items_updated_at ON grocery_items;
+CREATE TRIGGER update_grocery_items_updated_at
+  BEFORE UPDATE ON grocery_items
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_user_preferences_updated_at 
-  BEFORE UPDATE ON user_preferences 
+DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON user_preferences;
+CREATE TRIGGER update_user_preferences_updated_at
+  BEFORE UPDATE ON user_preferences
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Create function to generate household codes
