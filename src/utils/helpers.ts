@@ -148,3 +148,29 @@ export const categorizeItem = (itemName: string): string => {
 
   return 'Other';
 };
+
+export const PANTRY_CATEGORIES = [
+  'Dairy & Eggs',
+  'Fruits & Vegetables',
+  'Grains & Bread',
+  'Meat & Fish',
+  'Condiments',
+  'Snacks',
+  'Other',
+] as const;
+
+export const PANTRY_UNITS = [
+  'piece',
+  'cup',
+  'tbsp',
+  'tsp',
+  'oz',
+  'lb',
+  'g',
+  'kg',
+  'ml',
+  'L',
+  'can',
+  'bottle',
+  'bag',
+] as const;

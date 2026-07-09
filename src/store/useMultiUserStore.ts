@@ -5,10 +5,9 @@ import {
   GroceryItem,
   Recipe,
   ShoppingListItem,
-  UserPreferences,
+  PantrySettings,
   User,
   Household,
-  AppState,
 } from '../types';
 import {
   generateId,
@@ -21,6 +20,10 @@ import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import { supabaseService } from '../services/supabaseService';
 import { notificationService } from '../services/notificationService';
+import {
+  pantryPreferencesService,
+  defaultPantrySettings,
+} from '../services/pantryPreferencesService';
 import { isDevMode } from '../config/dev';
 
 // Clear Zustand persisted storage in dev mode
@@ -39,7 +42,8 @@ interface MultiUserStore {
   pantry: GroceryItem[];
   recipes: Recipe[];
   shoppingList: ShoppingListItem[];
-  preferences: UserPreferences;
+  preferences: PantrySettings;
+  favoriteRecipes: string[]; // Array of recipe IDs
 
   // UI state
   isLoading: boolean;
@@ -73,6 +77,7 @@ interface MultiUserStore {
   removeGroceryItem: (id: string) => Promise<void>;
   markItemAsUsed: (id: string) => Promise<void>;
   markItemAsExpired: (id: string) => Promise<void>;
+  useItem: (id: string, quantityToUse: number) => Promise<void>;
   refreshPantry: () => Promise<void>;
 
   // Shopping List Actions (with user context)
@@ -89,6 +94,10 @@ interface MultiUserStore {
   ) => Promise<void>;
   removeShoppingListItem: (id: string) => Promise<void>;
   toggleShoppingItemComplete: (id: string) => Promise<void>;
+  addMissingIngredientsToShoppingList: (
+    ingredients: string[],
+    recipeTitle: string
+  ) => Promise<{ addedCount: number; updatedCount: number } | void>;
 
   // Recipe Actions (with user context)
   addRecipe: (
@@ -98,8 +107,14 @@ interface MultiUserStore {
   updateRecipe: (id: string, updates: Partial<Recipe>) => void;
   removeRecipe: (id: string) => void;
 
+  // Recipe Favorites Actions
+  toggleRecipeFavorite: (recipeId: string) => Promise<void>;
+  isRecipeFavorited: (recipeId: string) => boolean;
+  loadFavoriteRecipes: () => Promise<void>;
+
   // Preferences
-  updatePreferences: (updates: Partial<UserPreferences>) => void;
+  updatePreferences: (updates: Partial<PantrySettings>) => Promise<void>;
+  resetStore: () => void;
 
   // Computed getters
   getExpiringItems: () => GroceryItem[];
@@ -111,16 +126,7 @@ interface MultiUserStore {
   getHouseholdMembers: () => User[];
 }
 
-const defaultPreferences: UserPreferences = {
-  lowStockThreshold: 1,
-  expirationReminderDays: 3,
-  defaultItemVisibility: 'shared',
-  notifications: {
-    expirationReminders: true,
-    lowStockAlerts: true,
-    householdUpdates: true,
-  },
-};
+const defaultPreferences: PantrySettings = defaultPantrySettings;
 
 export const useMultiUserStore = create<MultiUserStore>()(
   persist(
@@ -134,6 +140,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
       recipes: [],
       shoppingList: [],
       preferences: defaultPreferences,
+      favoriteRecipes: [],
       isLoading: false,
       error: null,
 
@@ -233,6 +240,10 @@ export const useMultiUserStore = create<MultiUserStore>()(
               )
             : [];
 
+          const preferences = existingUser
+            ? await pantryPreferencesService.getPreferences(existingUser.id)
+            : defaultPreferences;
+
           console.log('Store: Setting state with user:', existingUser);
           set({
             currentUser: existingUser,
@@ -241,8 +252,14 @@ export const useMultiUserStore = create<MultiUserStore>()(
             pantry,
             shoppingList,
             recipes,
+            preferences,
             isLoading: false,
           });
+
+          // Load favorite recipes
+          if (existingUser) {
+            get().loadFavoriteRecipes();
+          }
         } catch (error) {
           console.error('Store: Error initializing user:', error);
           set({ error: 'Failed to initialize user', isLoading: false });
@@ -475,16 +492,88 @@ export const useMultiUserStore = create<MultiUserStore>()(
         }
       },
 
+      // Enhanced use item functionality with quantity handling
+      useItem: async (id: string, quantityToUse: number) => {
+        const { currentUser, currentHousehold } = get();
+        if (!currentUser) return;
+
+        try {
+          const item = get().pantry.find(item => item.id === id);
+          if (!item) {
+            console.error('Item not found:', id);
+            return;
+          }
+
+          if (quantityToUse > item.quantity) {
+            console.error('Cannot use more than available quantity');
+            return;
+          }
+
+          const newQuantity = item.quantity - quantityToUse;
+          
+          if (newQuantity <= 0) {
+            // Item is completely used up, mark as used
+            await get().updateGroceryItem(id, { 
+              quantity: 0,
+              isUsed: true 
+            });
+          } else {
+            // Reduce quantity
+            await get().updateGroceryItem(id, { 
+              quantity: newQuantity 
+            });
+          }
+
+          // Send household notification if shared
+          if (item.isShared && currentHousehold) {
+            await notificationService.scheduleHouseholdUpdateNotification(
+              currentHousehold.name,
+              currentUser.name,
+              'used',
+              `${quantityToUse} ${item.unit} of ${item.name}`
+            );
+          }
+
+          console.log(`Used ${quantityToUse} ${item.unit} of ${item.name}`);
+        } catch (error) {
+          console.error('Error using item:', error);
+        }
+      },
+
       markItemAsExpired: async id => {
         await get().updateGroceryItem(id, { isExpired: true });
       },
 
       // Shopping List Actions (with user context)
       addShoppingListItem: async (item, isShared = true) => {
-        const { currentUser, currentHousehold } = get();
+        const { currentUser, currentHousehold, shoppingList } = get();
         if (!currentUser) return;
 
         try {
+          // Check for existing similar items
+          const existingItem = shoppingList.find(
+            existing => 
+              existing.name.toLowerCase() === item.name.toLowerCase() &&
+              !existing.isCompleted
+          );
+
+          if (existingItem) {
+            // Update existing item with combined quantity and notes
+            const combinedQuantity = existingItem.quantity + item.quantity;
+            const combinedNotes = [existingItem.notes, item.notes]
+              .filter(note => note && note.trim())
+              .join('; ');
+
+            await get().updateShoppingListItem(existingItem.id, {
+              quantity: combinedQuantity,
+              notes: combinedNotes,
+            });
+
+            console.log(`Updated existing item: ${item.name} (quantity: ${combinedQuantity})`);
+            return;
+          }
+
+          // Add new item if no duplicate found
           const newItem = await supabaseService.addShoppingListItem(
             {
               ...item,
@@ -497,6 +586,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
           );
 
           set(state => ({ shoppingList: [...state.shoppingList, newItem] }));
+          console.log(`Added new item: ${item.name}`);
         } catch (error) {
           console.error('Error adding shopping list item:', error);
           set({ error: 'Failed to add item' });
@@ -620,17 +710,141 @@ export const useMultiUserStore = create<MultiUserStore>()(
         }));
       },
 
+      // Recipe Favorites Actions
+            toggleRecipeFavorite: async (recipeId: string) => {
+        const { currentUser } = get();
+        if (!currentUser) return;
+
+        try {
+          const { recipeFavoritesService } = await import('../services/recipeFavoritesService');
+          const isFavorited = await recipeFavoritesService.toggleFavorite(currentUser.id, recipeId);
+
+          set(state => ({
+            favoriteRecipes: isFavorited
+              ? [...state.favoriteRecipes, recipeId]
+              : state.favoriteRecipes.filter(id => id !== recipeId)
+          }));
+        } catch (error) {
+          console.error('Error toggling recipe favorite:', error);
+          set({ error: 'Failed to update favorite' });
+        }
+      },
+
+      // Add multiple missing ingredients with smart duplicate handling
+      addMissingIngredientsToShoppingList: async (ingredients: string[], recipeTitle: string) => {
+        const { currentUser, shoppingList } = get();
+        if (!currentUser) return;
+
+        try {
+          let addedCount = 0;
+          let updatedCount = 0;
+
+          for (const ingredient of ingredients) {
+            // Check for existing similar items
+            const existingItem = shoppingList.find(
+              existing => 
+                existing.name.toLowerCase() === ingredient.toLowerCase() &&
+                !existing.isCompleted
+            );
+
+            if (existingItem) {
+              // Update existing item
+              const combinedNotes = [existingItem.notes, `For recipe: ${recipeTitle}`]
+                .filter(note => note && note.trim())
+                .join('; ');
+
+              await get().updateShoppingListItem(existingItem.id, {
+                notes: combinedNotes,
+              });
+              updatedCount++;
+            } else {
+              // Add new item
+              await get().addShoppingListItem({
+                name: ingredient,
+                quantity: 1,
+                unit: 'piece',
+                category: 'Other',
+                notes: `For recipe: ${recipeTitle}`,
+                price: 0,
+                isShared: true,
+              });
+              addedCount++;
+            }
+          }
+
+          console.log(`Shopping list updated: ${addedCount} new items, ${updatedCount} existing items updated`);
+          return { addedCount, updatedCount };
+        } catch (error) {
+          console.error('Error adding missing ingredients:', error);
+          set({ error: 'Failed to add ingredients to shopping list' });
+        }
+      },
+
+      isRecipeFavorited: (recipeId: string) => {
+        const { favoriteRecipes } = get();
+        return favoriteRecipes.includes(recipeId);
+      },
+
+      loadFavoriteRecipes: async () => {
+        const { currentUser } = get();
+        if (!currentUser) return;
+
+        try {
+          const { recipeFavoritesService } = await import('../services/recipeFavoritesService');
+          const favoriteIds = await recipeFavoritesService.getFavoriteRecipeIds(currentUser.id);
+          set({ favoriteRecipes: favoriteIds });
+        } catch (error) {
+          console.error('Error loading favorite recipes:', error);
+        }
+      },
+
       // Preferences
-      updatePreferences: updates => {
-        set(state => ({
-          preferences: { ...state.preferences, ...updates },
-        }));
+      updatePreferences: async updates => {
+        const { currentUser } = get();
+        if (!currentUser) {
+          set(state => ({
+            preferences: { ...state.preferences, ...updates },
+          }));
+          return;
+        }
+
+        try {
+          const saved = await pantryPreferencesService.savePreferences(
+            currentUser.id,
+            updates
+          );
+          set({ preferences: saved });
+        } catch (error) {
+          console.error('Error updating preferences:', error);
+          set(state => ({
+            preferences: { ...state.preferences, ...updates },
+            error: 'Failed to save preferences',
+          }));
+        }
+      },
+
+      resetStore: () => {
+        set({
+          currentUser: null,
+          currentHousehold: null,
+          users: [],
+          households: [],
+          pantry: [],
+          recipes: [],
+          shoppingList: [],
+          preferences: defaultPreferences,
+          favoriteRecipes: [],
+          isLoading: false,
+          error: null,
+        });
       },
 
       // Computed getters
       getExpiringItems: () => {
-        const { pantry } = get();
-        return pantry.filter(item => isExpiringSoon(item));
+        const { pantry, preferences } = get();
+        return pantry.filter(item =>
+          isExpiringSoon(item, preferences.expirationReminderDays)
+        );
       },
 
       getLowStockItems: () => {

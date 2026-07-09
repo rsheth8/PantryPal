@@ -94,7 +94,11 @@ PantryPal features a unique, food-inspired design system:
 
 3. **Set up Supabase**
    - Create a Supabase project
-   - Run the SQL schema from `FINAL_SQL_SCHEMA.sql`
+   - Run the SQL schema in this order:
+     1. `FINAL_SQL_SCHEMA.sql` (base tables)
+     2. `enhanced-recipe-features.sql` (recipe favorites, cooking mode — optional if using migrations)
+     3. All files in `supabase/migrations/` in chronological order
+   - Or run `node supabase-schema-runner.js list` to see the full apply order
    - Update `src/config/supabase.ts` with your project credentials
 
 4. **Configure API Keys** (optional)
@@ -118,10 +122,11 @@ The app uses PostgreSQL with the following main tables:
 - `users` - User profiles and authentication
 - `households` - Household information and settings
 - `grocery_items` - Pantry items with expiration tracking
-- `shopping_list_items` - Shopping list management
+- `shopping_list_items` - Shopping list management (includes category, price)
 - `recipes` - Recipe storage and metadata
-- `user_preferences` - Dietary and app preferences
-- `meal_plans` - Generated meal plans
+- `user_preferences` - Pantry thresholds and notification settings
+- `user_recipe_preferences` - Dietary/recipe preferences from onboarding quiz
+- `recipe_favorites`, `cooking_sessions`, `recipe_ratings` - Enhanced recipe features
 
 ## 🏗️ Project Structure
 

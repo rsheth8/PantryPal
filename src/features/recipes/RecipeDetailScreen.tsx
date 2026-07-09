@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import { Recipe } from '../../types';
 import { colors, typography, spacing, borderRadius, shadows } from '../../utils/designSystem';
+import { useMultiUserStore } from '../../store/useMultiUserStore';
 
 type RecipeDetailRouteProp = RouteProp<{
   RecipeDetail: { recipe: Recipe };
@@ -23,51 +24,79 @@ export default function RecipeDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute<RecipeDetailRouteProp>();
   const { recipe } = route.params;
-  
+  const { isRecipeFavorited, toggleRecipeFavorite, addMissingIngredientsToShoppingList } = useMultiUserStore();
+
   const [isFavorite, setIsFavorite] = useState(false);
   const [servings, setServings] = useState(recipe.servings || 4);
 
-  const handleAddToShoppingList = () => {
-    // TODO: Implement add missing ingredients to shopping list
-    Alert.alert(
-      'Add to Shopping List',
-      `Add missing ingredients for "${recipe.title}" to your shopping list?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Add', 
-          onPress: () => {
-            // TODO: Add missing ingredients to shopping list
-            Alert.alert('Success', 'Ingredients added to shopping list!');
-          }
+  // Ensure recipe has missingIngredients property
+  const safeRecipe = {
+    ...recipe,
+    missingIngredients: recipe.missingIngredients || [],
+    canCookNow: recipe.canCookNow || false,
+  };
+
+  // Check if recipe is favorited on mount
+  useEffect(() => {
+    setIsFavorite(isRecipeFavorited(recipe.id));
+  }, [recipe.id, isRecipeFavorited]);
+
+  const handleAddToShoppingList = async () => {
+    try {
+      // Add missing ingredients to shopping list
+      const missingIngredients = safeRecipe.missingIngredients;
+      
+      if (missingIngredients.length === 0) {
+        Alert.alert('No Missing Ingredients', 'You have all the ingredients needed for this recipe!');
+        return;
+      }
+      
+      const result = await addMissingIngredientsToShoppingList(missingIngredients, safeRecipe.title);
+      
+      if (result) {
+        const { addedCount, updatedCount } = result;
+        let message = '';
+        
+        if (addedCount > 0 && updatedCount > 0) {
+          message = `Added ${addedCount} new ingredients and updated ${updatedCount} existing items in your shopping list!`;
+        } else if (addedCount > 0) {
+          message = `Added ${addedCount} missing ingredients to your shopping list!`;
+        } else if (updatedCount > 0) {
+          message = `Updated ${updatedCount} existing items in your shopping list!`;
         }
-      ]
-    );
+
+        Alert.alert('Shopping List Updated', message);
+      }
+    } catch (error) {
+      console.error('Error adding to shopping list:', error);
+      Alert.alert('Error', 'Failed to add ingredients to shopping list');
+    }
   };
 
   const handleStartCooking = () => {
     Alert.alert(
       'Start Cooking',
-      `Ready to cook "${recipe.title}"?`,
+      `Ready to cook "${safeRecipe.title}"?`,
       [
         { text: 'Not yet', style: 'cancel' },
         { 
           text: 'Let\'s cook!', 
           onPress: () => {
-            // TODO: Navigate to cooking mode or timer
-            Alert.alert('Cooking Mode', 'Cooking mode coming soon!');
+            navigation.navigate('CookingMode' as never, { recipe: safeRecipe } as never);
           }
         }
       ]
     );
   };
 
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    Alert.alert(
-      isFavorite ? 'Removed from Favorites' : 'Added to Favorites',
-      `${recipe.title} ${isFavorite ? 'removed from' : 'added to'} your favorites!`
-    );
+  const toggleFavorite = async () => {
+    try {
+      await toggleRecipeFavorite(safeRecipe.id);
+      setIsFavorite(!isFavorite);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      Alert.alert('Error', 'Failed to update favorite');
+    }
   };
 
   const adjustServings = (increment: boolean) => {
@@ -87,8 +116,8 @@ export default function RecipeDetailScreen() {
   };
 
   const getTotalTime = () => {
-    const prepTime = recipe.prepTime || 0;
-    const cookTime = recipe.cookTime || 0;
+    const prepTime = safeRecipe.prepTime || 0;
+    const cookTime = safeRecipe.cookTime || 0;
     return prepTime + cookTime;
   };
 
@@ -112,21 +141,23 @@ export default function RecipeDetailScreen() {
     <View style={styles.container}>
       <PantryHeader 
         title="Recipe Details" 
-        subtitle={recipe.title}
+        subtitle={safeRecipe.title}
         gradient="berry"
         showBackButton 
         onBackPress={() => navigation.goBack()}
       />
       
-      <ScrollView 
-        style={styles.content} 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <View style={styles.contentWrapper}>
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+        >
         {/* Recipe Image */}
-        {recipe.imageUrl && (
+        {safeRecipe.imageUrl && (
           <PantryCard variant="elevated" padding="none" margin="none">
-            <Image source={{ uri: recipe.imageUrl }} style={styles.recipeImage} />
+            <Image source={{ uri: safeRecipe.imageUrl }} style={styles.recipeImage} />
           </PantryCard>
         )}
 
@@ -145,8 +176,8 @@ export default function RecipeDetailScreen() {
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: getDifficultyColor(recipe.difficulty || 'medium') }]}>
-                  {recipe.difficulty || 'Medium'}
+                <Text style={[styles.statValue, { color: getDifficultyColor(safeRecipe.difficulty || 'medium') }]}>
+                  {safeRecipe.difficulty || 'Medium'}
                 </Text>
                 <Text style={styles.statLabel}>difficulty</Text>
               </View>
@@ -179,10 +210,10 @@ export default function RecipeDetailScreen() {
         </View>
 
         {/* Recipe Description */}
-        {recipe.description && (
+        {safeRecipe.description && (
           <PantryCard variant="fresh" padding="md">
             <Text style={styles.sectionTitle}>About this Recipe</Text>
-            <Text style={styles.descriptionText}>{recipe.description}</Text>
+            <Text style={styles.descriptionText}>{safeRecipe.description}</Text>
           </PantryCard>
         )}
 
@@ -191,11 +222,34 @@ export default function RecipeDetailScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Ingredients</Text>
             <Text style={styles.sectionSubtitle}>
-              {recipe.ingredients.length} ingredients
+              {safeRecipe.ingredients.length} ingredients
+              {safeRecipe.missingIngredients.length > 0 && ` • ${safeRecipe.missingIngredients.length} missing`}
             </Text>
           </View>
+          
+          {/* Missing Ingredients Warning */}
+          {safeRecipe.missingIngredients.length > 0 && (
+            <View style={styles.missingIngredientsWarning}>
+              <Text style={styles.missingIngredientsTitle}>❌ Missing Ingredients:</Text>
+              <View style={styles.missingIngredientsList}>
+                {safeRecipe.missingIngredients.map((ingredient: string, index: number) => (
+                  <Text key={index} style={styles.missingIngredient}>
+                    • {ingredient}
+                  </Text>
+                ))}
+              </View>
+              <PantryButton
+                title="🛒 Add Missing to Shopping List"
+                onPress={handleAddToShoppingList}
+                variant="secondary"
+                size="sm"
+                fullWidth
+              />
+            </View>
+          )}
+          
           <View style={styles.ingredientsList}>
-            {recipe.ingredients.map(renderIngredient)}
+            {safeRecipe.ingredients.map(renderIngredient)}
           </View>
         </PantryCard>
 
@@ -204,33 +258,33 @@ export default function RecipeDetailScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Instructions</Text>
             <Text style={styles.sectionSubtitle}>
-              {recipe.instructions.length} steps
+              {safeRecipe.instructions.length} steps
             </Text>
           </View>
           <View style={styles.instructionsList}>
-            {recipe.instructions.map(renderInstruction)}
+            {safeRecipe.instructions.map(renderInstruction)}
           </View>
         </PantryCard>
 
         {/* Nutrition Info */}
-        {recipe.nutrition && (
+        {safeRecipe.nutrition && (
           <PantryCard variant="elevated" padding="md">
             <Text style={styles.sectionTitle}>Nutrition (per serving)</Text>
             <View style={styles.nutritionGrid}>
               <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>{recipe.nutrition.calories}</Text>
+                <Text style={styles.nutritionValue}>{safeRecipe.nutrition.calories}</Text>
                 <Text style={styles.nutritionLabel}>Calories</Text>
               </View>
               <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>{recipe.nutrition.protein}g</Text>
+                <Text style={styles.nutritionValue}>{safeRecipe.nutrition.protein}g</Text>
                 <Text style={styles.nutritionLabel}>Protein</Text>
               </View>
               <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>{recipe.nutrition.carbs}g</Text>
+                <Text style={styles.nutritionValue}>{safeRecipe.nutrition.carbs}g</Text>
                 <Text style={styles.nutritionLabel}>Carbs</Text>
               </View>
               <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>{recipe.nutrition.fat}g</Text>
+                <Text style={styles.nutritionValue}>{safeRecipe.nutrition.fat}g</Text>
                 <Text style={styles.nutritionLabel}>Fat</Text>
               </View>
             </View>
@@ -238,11 +292,11 @@ export default function RecipeDetailScreen() {
         )}
 
         {/* Tags */}
-        {recipe.tags && recipe.tags.length > 0 && (
+        {safeRecipe.tags && safeRecipe.tags.length > 0 && (
           <PantryCard variant="fresh" padding="md">
             <Text style={styles.sectionTitle}>Tags</Text>
             <View style={styles.tagsContainer}>
-              {recipe.tags.map((tag, index) => (
+              {safeRecipe.tags.map((tag, index) => (
                 <View key={index} style={styles.tag}>
                   <Text style={styles.tagText}>{tag}</Text>
                 </View>
@@ -252,7 +306,7 @@ export default function RecipeDetailScreen() {
         )}
 
         {/* Action Buttons */}
-        <View style={styles.actionButtons}>
+        <View style={[styles.actionButtons, { backgroundColor: colors.neutral[50] }]}>
           <PantryButton
             title="❤️ Favorite"
             onPress={toggleFavorite}
@@ -277,7 +331,8 @@ export default function RecipeDetailScreen() {
             />
           </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -285,16 +340,20 @@ export default function RecipeDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.neutral[50],
+  },
+  contentWrapper: {
+    flex: 1,
+    backgroundColor: colors.neutral[50],
   },
   content: {
     flex: 1,
     padding: spacing.md,
-    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingBottom: spacing.xxl || 100,
     minHeight: '100%',
+    backgroundColor: colors.neutral[50],
   },
   recipeImage: {
     width: '100%',
@@ -473,5 +532,27 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  missingIngredientsWarning: {
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.warning[50],
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.warning[200],
+  },
+  missingIngredientsTitle: {
+    ...typography.bodyMedium,
+    color: colors.warning[700],
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  missingIngredientsList: {
+    marginBottom: spacing.md,
+  },
+  missingIngredient: {
+    ...typography.bodyMedium,
+    color: colors.warning[600],
+    marginBottom: spacing.xs,
   },
 });

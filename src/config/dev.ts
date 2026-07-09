@@ -3,8 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Development Configuration
 // Set this to true to bypass authentication during testing
 export const DEV_MODE = {
-  // Set to true to bypass login and automatically sign in
-  BYPASS_AUTH: true,
+  // Only enable in local dev; production builds always use real auth
+  BYPASS_AUTH: typeof __DEV__ !== 'undefined' ? false : false,
   // Test user for development
   TEST_USER: {
     email: 'user1@example.com',

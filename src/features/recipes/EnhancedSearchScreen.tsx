@@ -60,7 +60,7 @@ const POPULAR_TAGS = [
 
 export default function EnhancedSearchScreen() {
   const navigation = useNavigation();
-  const { recipes, pantry, preferences } = useMultiUserStore();
+  const { recipes, pantry, preferences, addMissingIngredientsToShoppingList } = useMultiUserStore();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -75,6 +75,17 @@ export default function EnhancedSearchScreen() {
     allergens: [],
     tags: [],
   });
+
+  // Debug: Log recipe data
+  useEffect(() => {
+    console.log('EnhancedSearch: Store recipes count:', recipes.length);
+    console.log('EnhancedSearch: Store recipes:', recipes.slice(0, 2)); // Log first 2 recipes
+  }, [recipes]);
+
+  // Load all recipes when screen mounts
+  useEffect(() => {
+    performSearch();
+  }, []); // Empty dependency array means this runs once when component mounts
 
   // Get unique values from existing recipes for suggestions
   const availableCuisines = useMemo(() => {
@@ -108,14 +119,14 @@ export default function EnhancedSearchScreen() {
     const suggestions = new Set<string>();
     const query = searchQuery.toLowerCase();
     
-    // Add recipe titles that match
+    // Add recipe titles that match from store recipes
     recipes.forEach(recipe => {
       if (recipe.title.toLowerCase().includes(query)) {
         suggestions.add(recipe.title);
       }
     });
     
-    // Add ingredients that match
+    // Add ingredients that match from store recipes
     recipes.forEach(recipe => {
       recipe.ingredients?.forEach(ingredient => {
         if (ingredient.toLowerCase().includes(query)) {
@@ -124,7 +135,7 @@ export default function EnhancedSearchScreen() {
       });
     });
     
-    // Add tags that match
+    // Add tags that match from store recipes
     recipes.forEach(recipe => {
       recipe.tags?.forEach(tag => {
         if (tag.toLowerCase().includes(query)) {
@@ -138,7 +149,6 @@ export default function EnhancedSearchScreen() {
 
   const performSearch = async (searchText?: string) => {
     const queryToSearch = searchText || searchQuery;
-    if (!queryToSearch.trim() && !hasActiveFilters()) return;
     
     setIsSearching(true);
     
@@ -148,8 +158,28 @@ export default function EnhancedSearchScreen() {
         setSearchHistory(prev => [searchText, ...prev.slice(0, 9)]);
       }
       
+      // Start with store recipes (which we know work)
+      let allRecipes = [...recipes];
+      
+      // If there's a search query, try to get additional recipes from service
+      if (queryToSearch.trim()) {
+        try {
+          const serviceRecipes = await recipeService.searchRecipes(queryToSearch);
+          // Combine store recipes with service recipes, avoiding duplicates
+          const storeRecipeIds = new Set(recipes.map(r => r.id));
+          const newRecipes = serviceRecipes.filter(r => !storeRecipeIds.has(r.id));
+          allRecipes = [...recipes, ...newRecipes];
+          console.log('EnhancedSearch: Combined recipes - store:', recipes.length, 'service:', newRecipes.length);
+        } catch (error) {
+          console.error('EnhancedSearch: Error getting recipes from service:', error);
+          // Continue with just store recipes
+        }
+      }
+      
+      console.log('EnhancedSearch: Total recipes to filter:', allRecipes.length);
+      
       // Filter recipes based on search query and filters
-      let filteredRecipes = recipes.filter(recipe => {
+      let filteredRecipes = allRecipes.filter(recipe => {
         // If there's a search query, check if recipe matches
         if (queryToSearch.trim()) {
           const matchesSearch = 
@@ -165,6 +195,11 @@ export default function EnhancedSearchScreen() {
             );
           
           if (!matchesSearch) return false;
+        }
+        
+        // If no search query but no filters are active, show all recipes
+        if (!queryToSearch.trim() && !hasActiveFilters()) {
+          return true;
         }
         
         // Apply filters
@@ -210,14 +245,46 @@ export default function EnhancedSearchScreen() {
         return true;
       });
       
+      // Use existing missing ingredients data from store recipes, or calculate for new recipes
+      const recipesWithMissingIngredients = filteredRecipes.map(recipe => {
+        // If this is a store recipe, use existing data
+        const storeRecipe = recipes.find(r => r.id === recipe.id);
+        if (storeRecipe) {
+          return {
+            ...recipe,
+            missingIngredients: storeRecipe.missingIngredients || [],
+            canCookNow: storeRecipe.canCookNow || false,
+          };
+        }
+        
+        // For new recipes from service, calculate missing ingredients
+        try {
+          // Simple calculation: assume all ingredients are missing for now
+          // This can be enhanced later
+          return {
+            ...recipe,
+            missingIngredients: recipe.ingredients || [],
+            canCookNow: false,
+          };
+        } catch (error) {
+          console.error('EnhancedSearch: Error processing recipe:', recipe.title, error);
+          return {
+            ...recipe,
+            missingIngredients: recipe.ingredients || [],
+            canCookNow: false,
+          };
+        }
+      });
+
       // Sort by relevance (can cook now first, then by rating)
-      filteredRecipes.sort((a, b) => {
+      recipesWithMissingIngredients.sort((a, b) => {
         if (a.canCookNow && !b.canCookNow) return -1;
         if (!a.canCookNow && b.canCookNow) return 1;
         return (b.rating || 0) - (a.rating || 0);
       });
       
-      setSearchResults(filteredRecipes);
+      console.log('EnhancedSearch: Final search results:', recipesWithMissingIngredients.length, 'recipes');
+      setSearchResults(recipesWithMissingIngredients);
     } catch (error) {
       Alert.alert('Search Error', 'Failed to perform search. Please try again.');
     } finally {
@@ -270,6 +337,45 @@ export default function EnhancedSearchScreen() {
       tags: [],
     });
     setSearchResults([]);
+  };
+
+  const handleAddMissingIngredients = async (recipe: Recipe) => {
+    try {
+      const missingIngredients = recipe.missingIngredients || [];
+      
+      if (missingIngredients.length === 0) {
+        Alert.alert('No Missing Ingredients', 'You have all the ingredients needed for this recipe!');
+        return;
+      }
+
+      const result = await addMissingIngredientsToShoppingList(missingIngredients, recipe.title);
+      
+      if (result) {
+        const { addedCount, updatedCount } = result;
+        let message = '';
+        
+        if (addedCount > 0 && updatedCount > 0) {
+          message = `Added ${addedCount} new ingredients and updated ${updatedCount} existing items in your shopping list!`;
+        } else if (addedCount > 0) {
+          message = `Added ${addedCount} missing ingredients to your shopping list!`;
+        } else if (updatedCount > 0) {
+          message = `Updated ${updatedCount} existing items in your shopping list!`;
+        }
+
+        Alert.alert('Shopping List Updated', message);
+      }
+    } catch (error) {
+      console.error('Error adding missing ingredients:', error);
+      Alert.alert('Error', 'Failed to add ingredients to shopping list');
+    }
+  };
+
+  const handleCookRecipe = (recipe: Recipe) => {
+    if (!recipe.canCookNow) {
+      Alert.alert('Cannot Cook', 'You need to add missing ingredients first.');
+      return;
+    }
+    navigation.navigate('CookingMode' as never, { recipe } as never);
   };
 
   const renderRecipeCard = ({ item }: { item: Recipe }) => (
@@ -325,6 +431,32 @@ export default function EnhancedSearchScreen() {
           </View>
         )}
 
+        {/* Missing Ingredients Section */}
+        {!item.canCookNow && item.missingIngredients && item.missingIngredients.length > 0 && (
+          <View style={styles.missingIngredientsSection}>
+            <Text style={styles.missingIngredientsTitle}>❌ Missing Ingredients:</Text>
+            <View style={styles.missingIngredientsList}>
+              {item.missingIngredients.slice(0, 3).map((ingredient: string, index: number) => (
+                <Text key={index} style={styles.missingIngredient}>
+                  • {ingredient}
+                </Text>
+              ))}
+              {item.missingIngredients.length > 3 && (
+                <Text style={styles.moreMissingIngredients}>
+                  +{item.missingIngredients.length - 3} more ingredients
+                </Text>
+              )}
+            </View>
+            <PantryButton
+              title="🛒 Add Missing to Shopping List"
+              onPress={() => handleAddMissingIngredients(item)}
+              variant="secondary"
+              size="sm"
+              fullWidth
+            />
+          </View>
+        )}
+
         <View style={styles.recipeActions}>
           <PantryButton
             title="View"
@@ -334,7 +466,7 @@ export default function EnhancedSearchScreen() {
           />
           <PantryButton
             title="Cook"
-            onPress={() => Alert.alert('Cook Recipe', `Start cooking ${item.title}`)}
+            onPress={() => handleCookRecipe(item)}
             variant="primary"
             size="sm"
             disabled={!item.canCookNow}
@@ -399,7 +531,14 @@ export default function EnhancedSearchScreen() {
               onPress={performSearch}
               variant="primary"
               size="sm"
-              disabled={isSearching || !searchQuery.trim()}
+              disabled={isSearching}
+            />
+            <PantryButton
+              title="Show All"
+              onPress={() => performSearch()}
+              variant="secondary"
+              size="sm"
+              disabled={isSearching}
             />
           </View>
 
@@ -832,6 +971,33 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.warning,
     fontWeight: '600',
+  },
+  missingIngredientsSection: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.warning[50],
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.warning[200],
+  },
+  missingIngredientsTitle: {
+    ...typography.bodySmall,
+    color: colors.warning[700],
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  missingIngredientsList: {
+    marginBottom: spacing.sm,
+  },
+  missingIngredient: {
+    ...typography.bodySmall,
+    color: colors.warning[600],
+    marginBottom: spacing.xs,
+  },
+  moreMissingIngredients: {
+    ...typography.bodySmall,
+    color: colors.warning[500],
+    fontStyle: 'italic',
   },
   tagsContainer: {
     flexDirection: 'row',

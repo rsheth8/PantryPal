@@ -255,6 +255,67 @@ class ShoppingListSyncService {
     });
   }
 
+  /**
+   * Find shopping list items that are already stocked in pantry
+   */
+  findItemsAlreadyInPantry(
+    shoppingList: ShoppingListItem[],
+    pantry: GroceryItem[]
+  ): ShoppingListItem[] {
+    const stockedNames = pantry
+      .filter(item => !item.isExpired && !item.isUsed && item.quantity > 0)
+      .map(item => item.name.toLowerCase());
+
+    return shoppingList.filter(item => {
+      if (item.isCompleted) return false;
+      const name = item.name.toLowerCase();
+      return stockedNames.some(
+        stocked =>
+          stocked.includes(name) ||
+          name.includes(stocked) ||
+          stocked === name
+      );
+    });
+  }
+
+  /**
+   * Check if ingredient name exists in pantry
+   */
+  isInPantry(ingredientName: string, pantry: GroceryItem[]): boolean {
+    const name = ingredientName.toLowerCase();
+    return pantry.some(
+      item =>
+        !item.isExpired &&
+        !item.isUsed &&
+        item.quantity > 0 &&
+        (item.name.toLowerCase().includes(name) ||
+          name.includes(item.name.toLowerCase()))
+    );
+  }
+
+  /**
+   * Build sync summary for UI
+   */
+  getSyncSummary(
+    recipes: Recipe[],
+    pantry: GroceryItem[],
+    shoppingList: ShoppingListItem[]
+  ): {
+    alreadyStocked: ShoppingListItem[];
+    missingFromRecipes: MissingIngredient[];
+    duplicateGroups: ShoppingListItem[][];
+  } {
+    return {
+      alreadyStocked: this.findItemsAlreadyInPantry(shoppingList, pantry),
+      missingFromRecipes: this.syncMissingIngredients(
+        recipes,
+        pantry,
+        shoppingList
+      ),
+      duplicateGroups: this.findDuplicates(shoppingList),
+    };
+  }
+
   // Placeholder methods for future features
   getShoppingListInsights(): string {
     return 'Shopping list insights coming soon!';

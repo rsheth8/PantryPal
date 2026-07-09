@@ -8,8 +8,12 @@ import {
   TextInput,
   FlatList,
   Alert,
+  Modal,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
+import { shoppingListSyncService } from '../../services/shoppingListSyncService';
+import { ShoppingListItem } from '../../types';
+import { PANTRY_CATEGORIES } from '../../utils/helpers';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
@@ -24,15 +28,26 @@ import {
 export default function ShoppingListScreen() {
   const {
     shoppingList,
+    pantry,
+    recipes,
     addShoppingListItem,
     updateShoppingListItem,
     removeShoppingListItem,
+    addGroceryItem,
+    addMissingIngredientsToShoppingList,
   } = useMultiUserStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null);
   const [newItemName, setNewItemName] = useState('');
   const [newItemQuantity, setNewItemQuantity] = useState('1');
   const [newItemUnit, setNewItemUnit] = useState('piece');
+  const [editName, setEditName] = useState('');
+  const [editQuantity, setEditQuantity] = useState('1');
+  const [editUnit, setEditUnit] = useState('piece');
+  const [editCategory, setEditCategory] = useState('Other');
+  const [editNotes, setEditNotes] = useState('');
 
   const handleAddItem = () => {
     if (!newItemName.trim()) {
@@ -40,6 +55,22 @@ export default function ShoppingListScreen() {
       return;
     }
 
+    if (shoppingListSyncService.isInPantry(newItemName.trim(), pantry)) {
+      Alert.alert(
+        'Already in Pantry',
+        `${newItemName.trim()} appears to already be in your pantry. Add anyway?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Add Anyway', onPress: () => submitNewItem() },
+        ]
+      );
+      return;
+    }
+
+    submitNewItem();
+  };
+
+  const submitNewItem = () => {
     addShoppingListItem({
       name: newItemName.trim(),
       quantity: parseInt(newItemQuantity) || 1,
@@ -56,11 +87,69 @@ export default function ShoppingListScreen() {
     setShowAddModal(false);
   };
 
-  const handleToggleComplete = (itemId: string) => {
-    const item = shoppingList.find(item => item.id === itemId);
-    if (item) {
-      updateShoppingListItem(itemId, { isCompleted: !item.isCompleted });
+  const handleToggleComplete = (item: ShoppingListItem) => {
+    if (!item.isCompleted) {
+      Alert.alert(
+        'Mark Complete',
+        `Mark "${item.name}" as purchased?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Complete Only',
+            onPress: () =>
+              updateShoppingListItem(item.id, { isCompleted: true }),
+          },
+          {
+            text: 'Add to Pantry',
+            onPress: async () => {
+              await addGroceryItem(
+                {
+                  name: item.name,
+                  quantity: item.quantity,
+                  unit: item.unit,
+                  category: item.category || 'Other',
+                  expirationDate: new Date().toISOString().split('T')[0],
+                  notes: item.notes,
+                  price: item.price,
+                  isShared: item.isShared,
+                },
+                item.isShared
+              );
+              await updateShoppingListItem(item.id, { isCompleted: true });
+            },
+          },
+        ]
+      );
+    } else {
+      updateShoppingListItem(item.id, { isCompleted: false });
     }
+  };
+
+  const handleEditItem = (item: ShoppingListItem) => {
+    setEditingItem(item);
+    setEditName(item.name);
+    setEditQuantity(String(item.quantity));
+    setEditUnit(item.unit);
+    setEditCategory(item.category || 'Other');
+    setEditNotes(item.notes || '');
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingItem || !editName.trim()) {
+      Alert.alert('Error', 'Please enter an item name');
+      return;
+    }
+
+    updateShoppingListItem(editingItem.id, {
+      name: editName.trim(),
+      quantity: parseInt(editQuantity) || 1,
+      unit: editUnit,
+      category: editCategory,
+      notes: editNotes.trim() || undefined,
+    });
+    setShowEditModal(false);
+    setEditingItem(null);
   };
 
   const handleDeleteItem = (itemId: string) => {
@@ -100,11 +189,144 @@ export default function ShoppingListScreen() {
     );
   };
 
-  const handleSyncWithPantry = () => {
+  const handleCleanupDuplicates = () => {
+    // Find duplicates (case-insensitive name matching)
+    const duplicates: { [key: string]: any[] } = {};
+    
+    shoppingList.forEach(item => {
+      const key = item.name.toLowerCase();
+      if (!duplicates[key]) {
+        duplicates[key] = [];
+      }
+      duplicates[key].push(item);
+    });
+
+    // Filter out groups with only one item
+    const duplicateGroups = Object.values(duplicates).filter(group => group.length > 1);
+    
+    if (duplicateGroups.length === 0) {
+      Alert.alert('No Duplicates', 'No duplicate items found in your shopping list.');
+      return;
+    }
+
+    let totalMerged = 0;
+    let totalRemoved = 0;
+
+    duplicateGroups.forEach(group => {
+      if (group.length < 2) return;
+
+      const firstItem = group[0];
+      const totalQuantity = group.reduce((sum, item) => sum + item.quantity, 0);
+      const combinedNotes = group
+        .map(item => item.notes)
+        .filter(note => note && note.trim())
+        .join('; ');
+
+      // Update first item with combined data
+      updateShoppingListItem(firstItem.id, {
+        quantity: totalQuantity,
+        notes: combinedNotes,
+      });
+
+      // Remove other items
+      group.slice(1).forEach(item => {
+        removeShoppingListItem(item.id);
+        totalRemoved++;
+      });
+
+      totalMerged++;
+    });
+
     Alert.alert(
-      'Sync with Pantry',
-      'Sync missing ingredients from recipes to shopping list'
+      'Duplicates Cleaned Up',
+      `Merged ${totalMerged} duplicate groups and removed ${totalRemoved} duplicate items.`
     );
+  };
+
+  const handleSyncWithPantry = () => {
+    const summary = shoppingListSyncService.getSyncSummary(
+      recipes,
+      pantry,
+      shoppingList
+    );
+
+    const messages: string[] = [];
+
+    if (summary.alreadyStocked.length > 0) {
+      messages.push(
+        `${summary.alreadyStocked.length} item(s) already in pantry: ${summary.alreadyStocked.map(i => i.name).join(', ')}`
+      );
+    }
+
+    if (summary.missingFromRecipes.length > 0) {
+      messages.push(
+        `${summary.missingFromRecipes.length} missing ingredient(s) from recipes can be added`
+      );
+    }
+
+    if (summary.duplicateGroups.length > 0) {
+      messages.push(
+        `${summary.duplicateGroups.length} duplicate group(s) found`
+      );
+    }
+
+    if (messages.length === 0) {
+      Alert.alert('Sync Complete', 'Shopping list is in sync with your pantry.');
+      return;
+    }
+
+    Alert.alert('Sync with Pantry', messages.join('\n\n'), [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sync All',
+        onPress: async () => {
+          if (summary.alreadyStocked.length > 0) {
+            Alert.alert(
+              'Remove Stocked Items?',
+              `Remove ${summary.alreadyStocked.length} item(s) already in pantry?`,
+              [
+                { text: 'Keep', style: 'cancel' },
+                {
+                  text: 'Remove',
+                  style: 'destructive',
+                  onPress: () => {
+                    summary.alreadyStocked.forEach(item =>
+                      removeShoppingListItem(item.id)
+                    );
+                  },
+                },
+              ]
+            );
+          }
+
+          if (summary.missingFromRecipes.length > 0) {
+            for (const ingredient of summary.missingFromRecipes) {
+              await addShoppingListItem({
+                name: ingredient.name,
+                quantity: ingredient.quantity,
+                unit: ingredient.unit,
+                category: ingredient.category,
+                notes: ingredient.sourceRecipe
+                  ? `From recipe: ${ingredient.sourceRecipe}`
+                  : undefined,
+                price: 0,
+                isShared: true,
+              });
+            }
+          }
+
+          if (summary.duplicateGroups.length > 0) {
+            shoppingListSyncService.mergeDuplicateItems(
+              summary.duplicateGroups,
+              updateShoppingListItem,
+              removeShoppingListItem
+            );
+          }
+
+          Alert.alert('Sync Complete', 'Shopping list has been updated.');
+        },
+      },
+    ]);
   };
 
   // Filter items based on search
@@ -118,12 +340,12 @@ export default function ShoppingListScreen() {
   const progressPercentage =
     totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
-  const renderItem = ({ item }: { item: any }) => (
+  const renderItem = ({ item }: { item: ShoppingListItem }) => (
     <PantryCard variant='default' padding='md'>
       <View style={styles.itemContainer}>
         <TouchableOpacity
           style={styles.itemContent}
-          onPress={() => handleToggleComplete(item.id)}
+          onPress={() => handleToggleComplete(item)}
           activeOpacity={0.8}
         >
           <View style={styles.checkboxContainer}>
@@ -156,7 +378,7 @@ export default function ShoppingListScreen() {
         <View style={styles.itemActions}>
           <PantryButton
             title='Edit'
-            onPress={() => Alert.alert('Edit Item', `Edit ${item.name}`)}
+            onPress={() => handleEditItem(item)}
             variant='outline'
             size='sm'
           />
@@ -225,6 +447,14 @@ export default function ShoppingListScreen() {
               variant='outline'
               size='sm'
               icon='🔄'
+              fullWidth
+            />
+            <PantryButton
+              title='Cleanup Duplicates'
+              onPress={handleCleanupDuplicates}
+              variant='outline'
+              size='sm'
+              icon='🔧'
               fullWidth
             />
             <PantryButton
@@ -332,6 +562,102 @@ export default function ShoppingListScreen() {
           </View>
         </View>
       )}
+
+      {/* Edit Item Modal */}
+      <Modal visible={showEditModal} animationType='slide' transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <PantryCard variant='elevated' padding='lg'>
+              <Text style={styles.modalTitle}>Edit Item</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Item Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholderTextColor={colors.neutral[400]}
+                />
+              </View>
+
+              <View style={styles.inputRow}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Quantity</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editQuantity}
+                    onChangeText={setEditQuantity}
+                    keyboardType='numeric'
+                    placeholderTextColor={colors.neutral[400]}
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Unit</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editUnit}
+                    onChangeText={setEditUnit}
+                    placeholderTextColor={colors.neutral[400]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Category</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.categoryRow}>
+                    {PANTRY_CATEGORIES.map(cat => (
+                      <TouchableOpacity
+                        key={cat}
+                        style={[
+                          styles.categoryChip,
+                          editCategory === cat && styles.categoryChipActive,
+                        ]}
+                        onPress={() => setEditCategory(cat)}
+                      >
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            editCategory === cat &&
+                              styles.categoryChipTextActive,
+                          ]}
+                        >
+                          {cat}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Notes</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editNotes}
+                  onChangeText={setEditNotes}
+                  placeholderTextColor={colors.neutral[400]}
+                />
+              </View>
+
+              <View style={styles.modalActions}>
+                <PantryButton
+                  title='Cancel'
+                  onPress={() => setShowEditModal(false)}
+                  variant='outline'
+                  size='md'
+                />
+                <PantryButton
+                  title='Save'
+                  onPress={handleSaveEdit}
+                  variant='primary'
+                  size='md'
+                />
+              </View>
+            </PantryCard>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -520,5 +846,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.lg,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  categoryChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.pill,
+    backgroundColor: colors.neutral[100],
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+  },
+  categoryChipActive: {
+    backgroundColor: colors.primary[500],
+    borderColor: colors.primary[500],
+  },
+  categoryChipText: {
+    ...typography.bodySmall,
+    color: colors.neutral[700],
+  },
+  categoryChipTextActive: {
+    color: '#fff',
   },
 });

@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  TextInput,
+  Modal,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
@@ -8,24 +17,43 @@ import {
   typography,
   spacing,
   borderRadius,
-  shadows,
 } from '../../utils/designSystem';
 
 export default function ScannerScreen() {
+  const navigation = useNavigation<BottomTabNavigationProp<any>>();
   const [isScanning, setIsScanning] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualItemName, setManualItemName] = useState('');
 
   const handleStartScan = () => {
     setIsScanning(true);
-    Alert.alert('Scanner', 'Barcode scanning functionality coming soon!');
+    Alert.alert(
+      'Coming Soon',
+      'Barcode scanning will be available in a future update. Use Manual Entry for now.'
+    );
     setIsScanning(false);
   };
 
   const handleManualEntry = () => {
-    Alert.alert('Manual Entry', 'Manual item entry functionality coming soon!');
+    setManualItemName('');
+    setShowManualModal(true);
+  };
+
+  const handleManualSubmit = () => {
+    if (!manualItemName.trim()) {
+      Alert.alert('Error', 'Please enter an item name');
+      return;
+    }
+    setShowManualModal(false);
+    navigation.navigate('Pantry', {
+      prefillName: manualItemName.trim(),
+      showAddModal: true,
+    });
+    setManualItemName('');
   };
 
   const handlePhotoScan = () => {
-    Alert.alert('Photo Scan', 'Photo scanning functionality coming soon!');
+    Alert.alert('Coming Soon', 'Photo scanning will be available in a future update.');
   };
 
   return (
@@ -133,6 +161,38 @@ export default function ScannerScreen() {
           </View>
         </PantryCard>
       </View>
+
+      <Modal visible={showManualModal} animationType='slide' transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <PantryCard variant='elevated' padding='lg'>
+              <Text style={styles.modalTitle}>Manual Entry</Text>
+              <TextInput
+                style={styles.input}
+                placeholder='Item name'
+                value={manualItemName}
+                onChangeText={setManualItemName}
+                placeholderTextColor={colors.neutral[400]}
+                autoFocus
+              />
+              <View style={styles.modalActions}>
+                <PantryButton
+                  title='Cancel'
+                  onPress={() => setShowManualModal(false)}
+                  variant='outline'
+                  size='md'
+                />
+                <PantryButton
+                  title='Add to Pantry'
+                  onPress={handleManualSubmit}
+                  variant='primary'
+                  size='md'
+                />
+              </View>
+            </PantryCard>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -210,5 +270,37 @@ const styles = StyleSheet.create({
   tipText: {
     ...typography.bodySmall,
     color: colors.neutral[600],
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  input: {
+    height: 44,
+    backgroundColor: colors.neutral[100],
+    borderRadius: borderRadius.input,
+    paddingHorizontal: spacing.md,
+    fontSize: 16,
+    color: colors.neutral[900],
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
+    marginBottom: spacing.md,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
 });

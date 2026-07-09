@@ -11,6 +11,7 @@ import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import { UserPreferences } from '../../types';
+import { useMultiUserStore } from '../../store/useMultiUserStore';
 
 interface QuizStep {
   id: string;
@@ -123,6 +124,7 @@ const QUIZ_STEPS: QuizStep[] = [
 
 export default function OnboardingQuizScreen() {
   const navigation = useNavigation();
+  const { currentUser } = useMultiUserStore();
   const [currentStep, setCurrentStep] = useState(0);
   const [preferences, setPreferences] = useState<Partial<UserPreferences>>({
     dietaryRestrictions: [],
@@ -175,7 +177,15 @@ export default function OnboardingQuizScreen() {
 
   const handleComplete = async () => {
     try {
-      // TODO: Save preferences to backend
+      if (!currentUser) {
+        Alert.alert('Error', 'User not found. Please try again.');
+        return;
+      }
+
+      // Save preferences to backend
+      const { userPreferencesService } = await import('../../services/userPreferencesService');
+      await userPreferencesService.saveOnboardingPreferences(currentUser.id, preferences as UserPreferences);
+      
       console.log('Saving preferences:', preferences);
       
       Alert.alert(
@@ -189,6 +199,7 @@ export default function OnboardingQuizScreen() {
         ]
       );
     } catch (error) {
+      console.error('Error saving preferences:', error);
       Alert.alert('Error', 'Failed to save preferences. Please try again.');
     }
   };

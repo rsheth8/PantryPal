@@ -10,33 +10,70 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import {
+  usePantryItemForm,
+  PantryItemFormFields,
+  validatePantryItemForm,
+  pantryFormToItemPayload,
+} from '../../components/PantryItemForm';
+import { GroceryItem } from '../../types';
+import { isExpiringSoon } from '../../utils/helpers';
+import {
   colors,
   typography,
   spacing,
   borderRadius,
-  shadows,
-  pantryTokens,
 } from '../../utils/designSystem';
 
+type PantryRouteParams = {
+  Pantry: {
+    filter?: 'expiring' | 'lowStock';
+    prefillName?: string;
+    showAddModal?: boolean;
+  };
+};
+
 export default function PantryScreen() {
-  const { pantry, currentUser } = useMultiUserStore();
+  const route = useRoute<RouteProp<PantryRouteParams, 'Pantry'>>();
+  const {
+    pantry,
+    preferences,
+    addGroceryItem,
+    updateGroceryItem,
+    removeGroceryItem,
+    useItem,
+  } = useMultiUserStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [listFilter, setListFilter] = useState<'all' | 'expiring' | 'lowStock'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showUseModal, setShowUseModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<GroceryItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<GroceryItem | null>(null);
+  const [quantityToUse, setQuantityToUse] = useState('1');
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [sortBy, setSortBy] = useState<'name' | 'expiration' | 'category'>(
     'name'
   );
 
-  // Debug: Log the current state
+  const defaultIsShared = preferences.defaultItemVisibility === 'shared';
+  const addForm = usePantryItemForm(null, route.params?.prefillName, defaultIsShared);
+  const editForm = usePantryItemForm(editingItem);
+
   useEffect(() => {
-    console.log('PantryScreen: Current pantry items:', pantry.length);
-  }, [pantry]);
+    if (route.params?.filter) {
+      setListFilter(route.params.filter);
+    }
+    if (route.params?.showAddModal || route.params?.prefillName) {
+      setShowAddModal(true);
+    }
+  }, [route.params?.filter, route.params?.showAddModal, route.params?.prefillName]);
 
   const handleMergeDuplicates = () => {
     Alert.alert(
@@ -77,16 +114,122 @@ export default function PantryScreen() {
   };
 
   const handleAddItem = () => {
+    addForm.resetForm(null, route.params?.prefillName);
     setShowAddModal(true);
   };
 
   const handleCloseAddModal = () => {
     setShowAddModal(false);
+    addForm.resetForm();
   };
 
-  const handleSaveItem = () => {
-    Alert.alert('Success', 'Item added to pantry!');
-    setShowAddModal(false);
+  const handleSaveItem = async () => {
+    const error = validatePantryItemForm(addForm.form);
+    if (error) {
+      Alert.alert('Validation Error', error);
+      return;
+    }
+
+    try {
+      await addGroceryItem(pantryFormToItemPayload(addForm.form), addForm.form.isShared);
+      setShowAddModal(false);
+      addForm.resetForm();
+    } catch {
+      Alert.alert('Error', 'Failed to add item. Please try again.');
+    }
+  };
+
+  const handleEditItem = (item: GroceryItem) => {
+    setEditingItem(item);
+    editForm.resetForm(item);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    const error = validatePantryItemForm(editForm.form);
+    if (error) {
+      Alert.alert('Validation Error', error);
+      return;
+    }
+
+    try {
+      await updateGroceryItem(editingItem.id, pantryFormToItemPayload(editForm.form));
+      setShowEditModal(false);
+      setEditingItem(null);
+    } catch {
+      Alert.alert('Error', 'Failed to update item. Please try again.');
+    }
+  };
+
+  const handleDeleteItem = () => {
+    if (!editingItem) return;
+    Alert.alert('Delete Item', `Delete ${editingItem.name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await removeGroceryItem(editingItem.id);
+          setShowEditModal(false);
+          setEditingItem(null);
+        },
+      },
+    ]);
+  };
+
+  const handleUseItem = (item: GroceryItem) => {
+    if (item.quantity <= 0) {
+      Alert.alert('No Quantity', 'This item has no quantity to use.');
+      return;
+    }
+
+    if (item.quantity === 1) {
+      // Single item - use it all
+      Alert.alert(
+        'Use Item',
+        `Use 1 ${item.unit} of ${item.name}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Use',
+            onPress: () => useItem(item.id, 1),
+          },
+        ]
+      );
+    } else {
+      // Multiple items - show modal for quantity input
+      setSelectedItem(item);
+      setQuantityToUse('1');
+      setShowUseModal(true);
+    }
+  };
+
+  const handleConfirmUse = () => {
+    if (!selectedItem) return;
+
+    const quantity = parseInt(quantityToUse);
+    if (isNaN(quantity) || quantity <= 0) {
+      Alert.alert('Invalid Quantity', 'Please enter a valid number.');
+      return;
+    }
+    if (quantity > selectedItem.quantity) {
+      Alert.alert('Too Much', `You only have ${selectedItem.quantity} ${selectedItem.unit} available.`);
+      return;
+    }
+
+    useItem(selectedItem.id, quantity);
+    setShowUseModal(false);
+    setSelectedItem(null);
+    setQuantityToUse('1');
+  };
+
+  const handleUseAll = () => {
+    if (!selectedItem) return;
+    useItem(selectedItem.id, selectedItem.quantity);
+    setShowUseModal(false);
+    setSelectedItem(null);
+    setQuantityToUse('1');
   };
 
   // Filter and sort items
@@ -97,7 +240,14 @@ export default function PantryScreen() {
         item.category.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory =
         !selectedCategory || item.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const matchesListFilter =
+        listFilter === 'all' ||
+        (listFilter === 'expiring' &&
+          isExpiringSoon(item, preferences.expirationReminderDays)) ||
+        (listFilter === 'lowStock' &&
+          item.quantity <= preferences.lowStockThreshold &&
+          !item.isExpired);
+      return matchesSearch && matchesCategory && matchesListFilter;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -116,7 +266,7 @@ export default function PantryScreen() {
   // Get unique categories
   const categories = [...new Set(pantry.map(item => item.category))];
 
-  const renderItem = ({ item }: { item: any }) => (
+  const renderItem = ({ item }: { item: GroceryItem }) => (
     <PantryCard variant='default' padding='md'>
       <View style={styles.itemHeader}>
         <View style={styles.itemInfo}>
@@ -145,14 +295,15 @@ export default function PantryScreen() {
 
       <View style={styles.itemActions}>
         <PantryButton
-          title='Use'
-          onPress={() => Alert.alert('Use Item', `Marked ${item.name} as used`)}
-          variant='success'
+          title={item.quantity > 0 ? 'Use' : 'Used'}
+          onPress={() => handleUseItem(item)}
+          variant={item.quantity > 0 ? 'success' : 'outline'}
           size='sm'
+          disabled={item.quantity <= 0}
         />
         <PantryButton
           title='Edit'
-          onPress={() => Alert.alert('Edit Item', `Edit ${item.name}`)}
+          onPress={() => handleEditItem(item)}
           variant='outline'
           size='sm'
         />
@@ -273,6 +424,36 @@ export default function PantryScreen() {
         </ScrollView>
       </PantryCard>
 
+      {/* List filter chips */}
+      <PantryCard variant='default' padding='md'>
+        <Text style={styles.sectionTitle}>🔍 Filter</Text>
+        <View style={styles.sortContainer}>
+          {(['all', 'expiring', 'lowStock'] as const).map(filter => (
+            <TouchableOpacity
+              key={filter}
+              style={[
+                styles.sortChip,
+                listFilter === filter && styles.sortChipActive,
+              ]}
+              onPress={() => setListFilter(filter)}
+            >
+              <Text
+                style={[
+                  styles.sortChipText,
+                  listFilter === filter && styles.sortChipTextActive,
+                ]}
+              >
+                {filter === 'all'
+                  ? 'All'
+                  : filter === 'expiring'
+                    ? 'Expiring'
+                    : 'Low Stock'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </PantryCard>
+
       {/* Sort Options */}
       <PantryCard variant='default' padding='md'>
         <Text style={styles.sectionTitle}>🔄 Sort By</Text>
@@ -348,9 +529,10 @@ export default function PantryScreen() {
 
           <View style={styles.modalContent}>
             <PantryCard variant='elevated' padding='lg'>
-              <Text style={styles.modalPlaceholder}>
-                Add item form coming soon!
-              </Text>
+              <PantryItemFormFields
+                form={addForm.form}
+                updateField={addForm.updateField}
+              />
               <View style={styles.modalActions}>
                 <PantryButton
                   title='Cancel'
@@ -365,6 +547,122 @@ export default function PantryScreen() {
                   size='md'
                 />
               </View>
+            </PantryCard>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Item Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType='slide'
+        presentationStyle='pageSheet'
+      >
+        <View style={styles.modalContainer}>
+          <PantryHeader
+            title='Edit Item'
+            subtitle={editingItem?.name || ''}
+            gradient='primary'
+            showBackButton
+            onBackPress={() => {
+              setShowEditModal(false);
+              setEditingItem(null);
+            }}
+          />
+          <View style={styles.modalContent}>
+            <PantryCard variant='elevated' padding='lg'>
+              <PantryItemFormFields
+                form={editForm.form}
+                updateField={editForm.updateField}
+              />
+              <View style={styles.modalActions}>
+                <PantryButton
+                  title='Delete'
+                  onPress={handleDeleteItem}
+                  variant='error'
+                  size='md'
+                />
+                <PantryButton
+                  title='Cancel'
+                  onPress={() => {
+                    setShowEditModal(false);
+                    setEditingItem(null);
+                  }}
+                  variant='outline'
+                  size='md'
+                />
+                <PantryButton
+                  title='Save'
+                  onPress={handleSaveEdit}
+                  variant='primary'
+                  size='md'
+                />
+              </View>
+            </PantryCard>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Use Item Modal */}
+      <Modal
+        visible={showUseModal}
+        animationType='slide'
+        presentationStyle='pageSheet'
+      >
+        <View style={styles.modalContainer}>
+          <PantryHeader
+            title='Use Item'
+            subtitle={selectedItem ? `Use ${selectedItem.name}` : ''}
+            gradient='fresh'
+            showBackButton
+            onBackPress={() => setShowUseModal(false)}
+          />
+
+          <View style={styles.modalContent}>
+            <PantryCard variant='elevated' padding='lg'>
+              {selectedItem && (
+                <>
+                  <View style={styles.useItemInfo}>
+                    <Text style={styles.useItemName}>{selectedItem.name}</Text>
+                    <Text style={styles.useItemDetails}>
+                      Available: {selectedItem.quantity} {selectedItem.unit}
+                    </Text>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Quantity to Use</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder='1'
+                      value={quantityToUse}
+                      onChangeText={setQuantityToUse}
+                      keyboardType='numeric'
+                      placeholderTextColor={colors.neutral[400]}
+                    />
+                  </View>
+
+                  <View style={styles.modalActions}>
+                    <PantryButton
+                      title='Cancel'
+                      onPress={() => setShowUseModal(false)}
+                      variant='outline'
+                      size='md'
+                    />
+                    <PantryButton
+                      title='Use All'
+                      onPress={handleUseAll}
+                      variant='secondary'
+                      size='md'
+                    />
+                    <PantryButton
+                      title='Use'
+                      onPress={handleConfirmUse}
+                      variant='success'
+                      size='md'
+                    />
+                  </View>
+                </>
+              )}
             </PantryCard>
           </View>
         </View>
@@ -535,5 +833,36 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  useItemInfo: {
+    marginBottom: spacing.lg,
+  },
+  useItemName: {
+    ...typography.h4,
+    color: colors.neutral[800],
+    marginBottom: spacing.xs,
+  },
+  useItemDetails: {
+    ...typography.body,
+    color: colors.neutral[600],
+  },
+  inputGroup: {
+    marginBottom: spacing.lg,
+  },
+  inputLabel: {
+    ...typography.body,
+    color: colors.neutral[700],
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  input: {
+    height: 44,
+    backgroundColor: colors.neutral[100],
+    borderRadius: borderRadius.input,
+    paddingHorizontal: spacing.md,
+    fontSize: 16,
+    color: colors.neutral[900],
+    borderWidth: 1,
+    borderColor: colors.neutral[200],
   },
 });

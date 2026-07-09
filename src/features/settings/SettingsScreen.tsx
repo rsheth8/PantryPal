@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Switch,
   Alert,
+  Share,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
+import { authService } from '../../services/authService';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
@@ -16,15 +17,27 @@ import {
   colors,
   typography,
   spacing,
-  borderRadius,
-  shadows,
 } from '../../utils/designSystem';
 
-export default function SettingsScreen() {
-  const { currentUser, currentHousehold, leaveHousehold } = useMultiUserStore();
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
-  const [autoSyncEnabled, setAutoSyncEnabled] = React.useState(true);
+interface SettingsScreenProps {
+  onSignOut?: () => void;
+}
+
+export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
+  const {
+    currentUser,
+    currentHousehold,
+    pantry,
+    shoppingList,
+    preferences,
+    leaveHousehold,
+    updatePreferences,
+    resetStore,
+  } = useMultiUserStore();
+
+  useEffect(() => {
+    // Preferences loaded from store (synced from DB on init)
+  }, [preferences]);
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -32,9 +45,14 @@ export default function SettingsScreen() {
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: () => {
-          // Handle sign out
-          Alert.alert('Success', 'You have been signed out');
+        onPress: async () => {
+          try {
+            await authService.signOut();
+            resetStore();
+            onSignOut?.();
+          } catch {
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+          }
         },
       },
     ]);
@@ -58,29 +76,41 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleExportData = () => {
-    Alert.alert('Export Data', 'Export functionality coming soon!');
+  const handleExportData = async () => {
+    try {
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        user: currentUser,
+        household: currentHousehold,
+        pantry,
+        shoppingList,
+        preferences,
+      };
+      await Share.share({
+        message: JSON.stringify(exportData, null, 2),
+        title: 'PantryPal Data Export',
+      });
+    } catch {
+      Alert.alert('Error', 'Failed to export data.');
+    }
   };
 
-  const handleImportData = () => {
-    Alert.alert('Import Data', 'Import functionality coming soon!');
+  const handleNotificationToggle = async (value: boolean) => {
+    await updatePreferences({
+      notifications: {
+        ...preferences.notifications,
+        expirationReminders: value,
+        lowStockAlerts: value,
+        householdUpdates: value,
+      },
+    });
   };
 
-  const handleClearData = () => {
-    Alert.alert(
-      'Clear All Data',
-      'This will permanently delete all your data. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear Data',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Success', 'All data has been cleared');
-          },
-        },
-      ]
-    );
+  const handleLowStockThresholdChange = async (increase: boolean) => {
+    const next = increase
+      ? preferences.lowStockThreshold + 1
+      : Math.max(0, preferences.lowStockThreshold - 1);
+    await updatePreferences({ lowStockThreshold: next });
   };
 
   return (
@@ -92,7 +122,6 @@ export default function SettingsScreen() {
       />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Section */}
         <PantryCard variant='elevated' padding='lg'>
           <Text style={styles.sectionTitle}>👤 Profile</Text>
           <View style={styles.profileInfo}>
@@ -108,73 +137,69 @@ export default function SettingsScreen() {
           </View>
         </PantryCard>
 
-        {/* App Settings */}
         <PantryCard variant='fresh' padding='lg'>
-          <Text style={styles.sectionTitle}>⚙️ App Settings</Text>
+          <Text style={styles.sectionTitle}>⚙️ Pantry Settings</Text>
 
           <View style={styles.settingItem}>
             <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>Push Notifications</Text>
+              <Text style={styles.settingTitle}>Notifications</Text>
               <Text style={styles.settingSubtitle}>
-                Get notified about expiring items and updates
+                Expiration reminders, low stock, household updates
               </Text>
             </View>
             <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
+              value={preferences.notifications.expirationReminders}
+              onValueChange={handleNotificationToggle}
               trackColor={{
                 false: colors.neutral[300],
                 true: colors.primary[300],
               }}
               thumbColor={
-                notificationsEnabled ? colors.primary[500] : colors.neutral[400]
+                preferences.notifications.expirationReminders
+                  ? colors.primary[500]
+                  : colors.neutral[400]
               }
             />
           </View>
 
           <View style={styles.settingItem}>
             <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>Dark Mode</Text>
-              <Text style={styles.settingSubtitle}>Switch to dark theme</Text>
+              <Text style={styles.settingTitle}>Low Stock Threshold</Text>
+              <Text style={styles.settingSubtitle}>
+                Alert when quantity is at or below {preferences.lowStockThreshold}
+              </Text>
             </View>
-            <Switch
-              value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
-              trackColor={{
-                false: colors.neutral[300],
-                true: colors.primary[300],
-              }}
-              thumbColor={
-                darkModeEnabled ? colors.primary[500] : colors.neutral[400]
-              }
-            />
+            <View style={styles.thresholdControls}>
+              <PantryButton
+                title='-'
+                onPress={() => handleLowStockThresholdChange(false)}
+                variant='outline'
+                size='sm'
+              />
+              <Text style={styles.thresholdValue}>
+                {preferences.lowStockThreshold}
+              </Text>
+              <PantryButton
+                title='+'
+                onPress={() => handleLowStockThresholdChange(true)}
+                variant='outline'
+                size='sm'
+              />
+            </View>
           </View>
 
           <View style={styles.settingItem}>
             <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>Auto Sync</Text>
+              <Text style={styles.settingTitle}>Expiration Reminder</Text>
               <Text style={styles.settingSubtitle}>
-                Automatically sync data across devices
+                Warn {preferences.expirationReminderDays} days before expiry
               </Text>
             </View>
-            <Switch
-              value={autoSyncEnabled}
-              onValueChange={setAutoSyncEnabled}
-              trackColor={{
-                false: colors.neutral[300],
-                true: colors.primary[300],
-              }}
-              thumbColor={
-                autoSyncEnabled ? colors.primary[500] : colors.neutral[400]
-              }
-            />
           </View>
         </PantryCard>
 
-        {/* Data Management */}
         <PantryCard variant='warm' padding='lg'>
           <Text style={styles.sectionTitle}>📊 Data Management</Text>
-
           <PantryButton
             title='Export Data'
             onPress={handleExportData}
@@ -183,34 +208,14 @@ export default function SettingsScreen() {
             icon='📤'
             fullWidth
           />
-
-          <PantryButton
-            title='Import Data'
-            onPress={handleImportData}
-            variant='outline'
-            size='md'
-            icon='📥'
-            fullWidth
-          />
-
-          <PantryButton
-            title='Clear All Data'
-            onPress={handleClearData}
-            variant='error'
-            size='md'
-            icon='🗑️'
-            fullWidth
-          />
         </PantryCard>
 
-        {/* Household Management */}
         {currentHousehold && (
           <PantryCard variant='outlined' padding='lg'>
             <Text style={styles.sectionTitle}>🏠 Household</Text>
             <Text style={styles.householdDescription}>
               You are currently part of the "{currentHousehold.name}" household.
             </Text>
-
             <PantryButton
               title='Leave Household'
               onPress={handleLeaveHousehold}
@@ -222,10 +227,8 @@ export default function SettingsScreen() {
           </PantryCard>
         )}
 
-        {/* Account Actions */}
         <PantryCard variant='default' padding='lg'>
           <Text style={styles.sectionTitle}>🔐 Account</Text>
-
           <PantryButton
             title='Sign Out'
             onPress={handleSignOut}
@@ -236,20 +239,11 @@ export default function SettingsScreen() {
           />
         </PantryCard>
 
-        {/* App Info */}
         <PantryCard variant='outlined' padding='lg'>
           <Text style={styles.sectionTitle}>ℹ️ App Info</Text>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Version</Text>
             <Text style={styles.infoValue}>1.0.0</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Build</Text>
-            <Text style={styles.infoValue}>2024.1.1</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Developer</Text>
-            <Text style={styles.infoValue}>PantryPal Team</Text>
           </View>
         </PantryCard>
       </ScrollView>
@@ -311,6 +305,17 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.neutral[600],
   },
+  thresholdControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  thresholdValue: {
+    ...typography.body,
+    fontWeight: '600',
+    minWidth: 24,
+    textAlign: 'center',
+  },
   householdDescription: {
     ...typography.bodySmall,
     color: colors.neutral[600],
@@ -322,8 +327,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral[100],
   },
   infoLabel: {
     ...typography.body,

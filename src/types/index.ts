@@ -116,10 +116,23 @@ export interface ShoppingListItem {
   updatedAt?: string;
 }
 
+/** Pantry/app settings stored in user_preferences table */
+export interface PantrySettings {
+  lowStockThreshold: number;
+  expirationReminderDays: number;
+  defaultItemVisibility: 'shared' | 'private';
+  notifications: {
+    expirationReminders: boolean;
+    lowStockAlerts: boolean;
+    householdUpdates: boolean;
+  };
+}
+
+/** Recipe/dietary preferences from onboarding quiz */
 export interface UserPreferences {
   id: string;
   userId: string;
-  
+
   // Dietary Preferences
   dietaryRestrictions: string[];
   allergies: string[];
@@ -206,7 +219,8 @@ export interface AppState {
   pantry: GroceryItem[];
   recipes: Recipe[];
   shoppingList: ShoppingListItem[];
-  preferences: UserPreferences;
+  preferences: PantrySettings;
+  favoriteRecipes: string[]; // Array of recipe IDs
 
   // UI state
   isLoading: boolean;
@@ -290,6 +304,76 @@ export interface DietaryPreferences {
     skillLevel: 'beginner' | 'intermediate' | 'advanced';
   };
 
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Enhanced Recipe Features Interfaces
+
+export interface RecipeFavorite {
+  id: string;
+  userId: string;
+  recipeId: string;
+  createdAt: string;
+}
+
+export interface UserRecipePreferences {
+  userId: string;
+  dietaryRestrictions: string[];
+  allergies: string[];
+  preferredCuisines: string[];
+  cookingSkill: 'beginner' | 'intermediate' | 'advanced';
+  spiceTolerance: 'low' | 'medium' | 'high';
+  healthGoals: string[];
+  nutritionGoals: {
+    maxCalories: number;
+    minProtein: number;
+    maxCarbs: number;
+    maxFat: number;
+  };
+  difficultyPreference: 'easy' | 'medium' | 'hard' | 'any';
+  maxCookingTime: number;
+  servingSizePreference: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CookingSession {
+  id: string;
+  userId: string;
+  recipeId: string;
+  householdId: string;
+  status: 'active' | 'paused' | 'completed' | 'cancelled';
+  currentStep: number;
+  startTime: string;
+  endTime?: string;
+  totalDuration?: number; // in minutes
+  notes?: string;
+  createdAt: string;
+}
+
+export interface CookingSessionStep {
+  id: string;
+  sessionId: string;
+  stepNumber: number;
+  instruction: string;
+  estimatedTime?: number; // in minutes
+  actualTime?: number; // in minutes
+  isCompleted: boolean;
+  completedAt?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface RecipeRating {
+  id: string;
+  userId: string;
+  recipeId: string;
+  rating: number; // 1-5
+  review?: string;
+  difficultyRating?: number; // 1-5
+  tasteRating?: number; // 1-5
+  wouldCookAgain?: boolean;
   createdAt: string;
   updatedAt: string;
 }

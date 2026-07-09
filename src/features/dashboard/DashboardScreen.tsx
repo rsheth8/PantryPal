@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
@@ -22,8 +23,17 @@ import {
 } from '../../utils/designSystem';
 
 export default function DashboardScreen() {
-  const { pantry, recipes, shoppingList, currentUser, currentHousehold } =
-    useMultiUserStore();
+  const navigation = useNavigation<BottomTabNavigationProp<any>>();
+  const {
+    pantry,
+    recipes,
+    shoppingList,
+    currentUser,
+    currentHousehold,
+    preferences,
+    getExpiringItems,
+    getLowStockItems,
+  } = useMultiUserStore();
   const [stats, setStats] = useState({
     totalItems: 0,
     expiringSoon: 0,
@@ -40,17 +50,8 @@ export default function DashboardScreen() {
   );
 
   const calculateStats = () => {
-    const now = new Date();
-    const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-
-    const expiringSoon = pantry.filter(item => {
-      const expirationDate = new Date(item.expirationDate);
-      return expirationDate <= threeDaysFromNow && !item.isExpired;
-    }).length;
-
-    const lowStock = pantry.filter(
-      item => item.quantity <= 1 && !item.isExpired
-    ).length;
+    const expiringSoon = getExpiringItems().length;
+    const lowStock = getLowStockItems().length;
     const canCookNow = recipes.filter(recipe => recipe.canCookNow).length;
 
     setStats({
@@ -128,13 +129,15 @@ export default function DashboardScreen() {
               'Expiring Soon',
               stats.expiringSoon,
               '⚠️',
-              colors.warning
+              colors.warning,
+              () => navigation.navigate('Pantry', { filter: 'expiring' })
             )}
             {renderStatCard(
               'Low Stock',
               stats.lowStock,
               '📉',
-              colors.citrus[500]
+              colors.citrus[500],
+              () => navigation.navigate('Pantry', { filter: 'lowStock' })
             )}
             {renderStatCard(
               'Recipes',
@@ -162,24 +165,19 @@ export default function DashboardScreen() {
           <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
           <View style={styles.quickActionsGrid}>
             {renderQuickAction('Add Item', '➕', colors.primary[500], () => {
-              Alert.alert('Add Item', 'Navigate to Pantry to add items');
+              navigation.navigate('Pantry', { showAddModal: true });
             })}
             {renderQuickAction(
               'Find Recipe',
               '🔍',
               colors.secondary[500],
-              () => {
-                Alert.alert(
-                  'Find Recipe',
-                  'Navigate to Recipes to discover meals'
-                );
-              }
+              () => navigation.navigate('Recipes')
             )}
             {renderQuickAction('Scan Barcode', '📱', colors.accent[500], () => {
-              Alert.alert('Scan Barcode', 'Navigate to Scanner to scan items');
+              navigation.navigate('Scanner');
             })}
-            {renderQuickAction('View Analytics', '📈', colors.sage[500], () => {
-              Alert.alert('Analytics', 'View detailed analytics and insights');
+            {renderQuickAction('Shopping List', '🛒', colors.sage[500], () => {
+              navigation.navigate('Shopping');
             })}
           </View>
         </PantryCard>
@@ -203,6 +201,29 @@ export default function DashboardScreen() {
                 fullWidth
               />
             </View>
+          </PantryCard>
+        )}
+
+        {/* Expiring items preview */}
+        {getExpiringItems().length > 0 && (
+          <PantryCard variant='outlined' padding='lg'>
+            <Text style={styles.sectionTitle}>⚠️ Expiring Soon</Text>
+            {getExpiringItems()
+              .slice(0, 3)
+              .map(item => (
+                <Text key={item.id} style={styles.expiringItem}>
+                  {item.name} — expires {item.expirationDate}
+                </Text>
+              ))}
+            <PantryButton
+              title='View All in Pantry'
+              onPress={() =>
+                navigation.navigate('Pantry', { filter: 'expiring' })
+              }
+              variant='outline'
+              size='sm'
+              fullWidth
+            />
           </PantryCard>
         )}
 
@@ -333,5 +354,10 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.neutral[500],
     textAlign: 'center',
+  },
+  expiringItem: {
+    ...typography.bodySmall,
+    color: colors.neutral[700],
+    marginBottom: spacing.xs,
   },
 });

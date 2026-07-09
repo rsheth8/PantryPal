@@ -25,7 +25,7 @@ import {
 
 export default function RecipesScreen() {
   const navigation = useNavigation();
-  const { recipes, pantry } = useMultiUserStore();
+  const { recipes, pantry, addMissingIngredientsToShoppingList, isRecipeFavorited, favoriteRecipes } = useMultiUserStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<
     'all' | 'canCook' | 'favorites'
@@ -35,6 +35,45 @@ export default function RecipesScreen() {
 
   const handleRecipePress = (recipe: any) => {
     navigation.navigate('RecipeDetail' as never, { recipe } as never);
+  };
+
+  const handleCookRecipe = (recipe: any) => {
+    if (!recipe.canCookNow) {
+      Alert.alert('Cannot Cook', 'You need to add missing ingredients first.');
+      return;
+    }
+    navigation.navigate('CookingMode' as never, { recipe } as never);
+  };
+
+  const handleAddMissingIngredients = async (recipe: any) => {
+    try {
+      const missingIngredients = recipe.missingIngredients || [];
+      
+      if (missingIngredients.length === 0) {
+        Alert.alert('No Missing Ingredients', 'You have all the ingredients needed for this recipe!');
+        return;
+      }
+
+      const result = await addMissingIngredientsToShoppingList(missingIngredients, recipe.title);
+      
+      if (result) {
+        const { addedCount, updatedCount } = result;
+        let message = '';
+        
+        if (addedCount > 0 && updatedCount > 0) {
+          message = `Added ${addedCount} new ingredients and updated ${updatedCount} existing items in your shopping list!`;
+        } else if (addedCount > 0) {
+          message = `Added ${addedCount} missing ingredients to your shopping list!`;
+        } else if (updatedCount > 0) {
+          message = `Updated ${updatedCount} existing items in your shopping list!`;
+        }
+
+        Alert.alert('Shopping List Updated', message);
+      }
+    } catch (error) {
+      console.error('Error adding missing ingredients:', error);
+      Alert.alert('Error', 'Failed to add ingredients to shopping list');
+    }
   };
 
   const handleAddRecipe = () => {
@@ -85,7 +124,7 @@ export default function RecipesScreen() {
       case 'canCook':
         return matchesSearch && recipe.canCookNow;
       case 'favorites':
-        return matchesSearch && recipe.isFavorite;
+        return matchesSearch && isRecipeFavorited(recipe.id);
       default:
         return matchesSearch;
     }
@@ -142,6 +181,32 @@ export default function RecipesScreen() {
           </View>
         )}
 
+        {/* Missing Ingredients Section */}
+        {!item.canCookNow && item.missingIngredients && item.missingIngredients.length > 0 && (
+          <View style={styles.missingIngredientsSection}>
+            <Text style={styles.missingIngredientsTitle}>❌ Missing Ingredients:</Text>
+            <View style={styles.missingIngredientsList}>
+              {item.missingIngredients.slice(0, 3).map((ingredient: string, index: number) => (
+                <Text key={index} style={styles.missingIngredient}>
+                  • {ingredient}
+                </Text>
+              ))}
+              {item.missingIngredients.length > 3 && (
+                <Text style={styles.moreMissingIngredients}>
+                  +{item.missingIngredients.length - 3} more ingredients
+                </Text>
+              )}
+            </View>
+            <PantryButton
+              title='🛒 Add Missing to Shopping List'
+              onPress={() => handleAddMissingIngredients(item)}
+              variant='secondary'
+              size='sm'
+              fullWidth
+            />
+          </View>
+        )}
+
         <View style={styles.recipeActions}>
           <PantryButton
             title='View'
@@ -151,9 +216,7 @@ export default function RecipesScreen() {
           />
           <PantryButton
             title='Cook'
-            onPress={() =>
-              Alert.alert('Cook Recipe', `Start cooking ${item.title}`)
-            }
+            onPress={() => handleCookRecipe(item)}
             variant='primary'
             size='sm'
             disabled={!item.canCookNow}
@@ -256,7 +319,7 @@ export default function RecipesScreen() {
               {
                 key: 'favorites',
                 label: 'Favorites',
-                count: recipes.filter(r => r.isFavorite).length,
+                count: favoriteRecipes.length,
               },
             ].map(filter => (
               <TouchableOpacity
@@ -297,7 +360,7 @@ export default function RecipesScreen() {
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>
-                {recipes.filter(r => r.isFavorite).length}
+                {favoriteRecipes.length}
               </Text>
               <Text style={styles.statLabel}>Favorites</Text>
             </View>
@@ -411,6 +474,7 @@ const styles = StyleSheet.create({
   filterContainer: {
     flexDirection: 'row',
     gap: spacing.sm,
+    flexWrap: 'wrap',
   },
   filterChip: {
     paddingHorizontal: spacing.md,
@@ -419,6 +483,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutral[100],
     borderWidth: 1,
     borderColor: colors.neutral[200],
+    marginBottom: spacing.xs,
   },
   filterChipActive: {
     backgroundColor: colors.primary[500],
@@ -600,5 +665,32 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.primary[700],
     fontWeight: '500',
+  },
+  missingIngredientsSection: {
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.warning[50],
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.warning[200],
+  },
+  missingIngredientsTitle: {
+    ...typography.bodySmall,
+    color: colors.warning[700],
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  missingIngredientsList: {
+    marginBottom: spacing.sm,
+  },
+  missingIngredient: {
+    ...typography.bodySmall,
+    color: colors.warning[600],
+    marginBottom: spacing.xs,
+  },
+  moreMissingIngredients: {
+    ...typography.bodySmall,
+    color: colors.warning[500],
+    fontStyle: 'italic',
   },
 });

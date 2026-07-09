@@ -96,14 +96,15 @@ export default function MainTabNavigator({ onSignOut }: MainTabNavigatorProps) {
       />
       <Tab.Screen
         name='Settings'
-        component={SettingsScreen}
         options={{
           tabBarLabel: 'Settings',
           tabBarIcon: ({ color, size }) => (
             <Text style={{ color, fontSize: size }}>⚙️</Text>
           ),
         }}
-      />
+      >
+        {() => <SettingsScreen onSignOut={onSignOut} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
