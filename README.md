@@ -35,22 +35,32 @@ A modern, collaborative pantry management app built with React Native and Expo. 
 
 ### 📱 **Smart Scanning**
 
-- Barcode scanning for quick item addition
-- OCR receipt scanning (coming soon)
-- Manual item entry
+- Live barcode scanning with the device camera (`expo-camera`)
+- Automatic product lookup via the free [Open Food Facts](https://world.openfoodfacts.org/)
+  database — **no API key required**, works out of the box
+- Prefills product name, brand, and category; pick quantity + expiry and add
+- Manual item entry with smart auto-categorization
 
 ### 🍳 **Meal Planning**
 
-- AI-powered meal plan generation
-- Dietary preference management
-- Recipe recommendations based on pantry contents
+- Weekly meal plan generation with a tiered preference-relaxation engine
+- Dietary preferences (diets, cuisines) and per-meal serving controls
+- Plans persist to Supabase and reload across sessions
 
 ### 📊 **Analytics & Insights**
 
-- Spending tracking and analysis
-- Waste reduction insights
-- Household activity monitoring
-- Shopping list analytics
+- Pantry health score and freshness breakdown
+- Waste-reduction score (used vs. expired)
+- Category breakdown and inventory value
+- Biggest-investment spend tracking
+
+### 🎨 **Polished, Modern UX**
+
+- Full light / dark / system theme with a persisted preference
+- Fluid animations throughout: springy pressables, staggered list entrances,
+  skeleton loaders, toasts with undo, confetti celebrations
+- Living ambient parallax backgrounds for depth on key screens
+- Haptic feedback and an animated launch splash + onboarding carousel
 
 ## 🎨 Design System
 
@@ -61,20 +71,47 @@ PantryPal features a unique, food-inspired design system:
 - **Vibrant Berry** - Accent color for fresh produce
 - **Warm Cream** - Neutral colors for natural, organic feel
 
-### Components
+The design system is theme-aware: every color is a semantic token
+(`theme.colors.*`) that resolves to the right value in light or dark mode.
+Screens consume it via the `useThemedStyles(createStyles)` hook.
 
-- `PantryHeader` - Consistent headers with gradients
-- `PantryCard` - Multiple variants for content organization
-- `PantryButton` - Unified button system with icons and subtitles
+### Core Components
+
+- `PantryHeader` — safe-area-aware headers with theme-tuned gradients
+- `PantryCard` — five surface variants that adapt to the active theme
+- `PantryButton` — gradient/solid/outline/ghost buttons with spring press + haptics
+
+### Animated UI Kit (`src/components/ui`)
+
+- `AnimatedPressable`, `FadeSlideIn` — tactile press + staggered entrances
+- `Skeleton`, `EmptyState`, `ProgressBar` — loading & empty states
+- `Toast` (with undo actions), `Confetti` — feedback & celebration
+- `AmbientBackground` — drifting parallax gradient orbs for depth
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React Native with Expo
-- **Language**: TypeScript
-- **State Management**: Zustand with persistence
-- **Backend**: Supabase (PostgreSQL)
-- **Navigation**: React Navigation
-- **Design**: Custom design system with food-inspired theme
+- **Frontend**: React Native 0.79 with Expo SDK 53 (New Architecture enabled)
+- **Language**: TypeScript (strict)
+- **State Management**: Zustand with AsyncStorage persistence
+- **Backend**: Supabase (PostgreSQL) with Row Level Security
+- **Auth**: Supabase Auth with a single AsyncStorage-backed client (sessions
+  persist across app restarts)
+- **Navigation**: React Navigation (bottom tabs + nested stacks)
+- **Animations**: React Native `Animated` (native driver) — no heavy deps
+- **Design**: Custom theme system (light/dark/system) with food-inspired tokens
+
+### Works before you add API keys
+
+The app is fully usable with **zero paid keys**:
+
+| Feature | Without keys | With keys |
+| --- | --- | --- |
+| Barcode scanning | ✅ Open Food Facts (free) | ✅ same |
+| Recipe discovery | ✅ curated mock recipes | ✅ live Spoonacular |
+| Receipt OCR | ✅ mock parsing | ✅ Google Cloud Vision |
+| Everything else | ✅ full functionality | ✅ full functionality |
+
+Add keys to `.env` whenever you're ready — no code changes needed.
 
 ## 📱 Screenshots
 
