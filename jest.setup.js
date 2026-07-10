@@ -1,7 +1,14 @@
 import '@testing-library/jest-native/extend-expect';
 
 // Mock Expo modules
-jest.mock('expo-linear-gradient', () => 'LinearGradient');
+jest.mock('expo-linear-gradient', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    LinearGradient: ({ children, ...props }) =>
+      React.createElement(View, props, children),
+  };
+});
 jest.mock('expo-camera', () => ({
   Camera: 'Camera',
   CameraType: {
@@ -22,6 +29,17 @@ jest.mock('expo-web-browser', () => ({
 }));
 jest.mock('expo-crypto', () => ({
   digestStringAsync: jest.fn(),
+}));
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
 }));
 jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: jest.fn(),

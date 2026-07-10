@@ -82,7 +82,7 @@ class RecipeService {
 
   async searchRecipesByIngredients(ingredients: string[]): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         // Return mock data if API key not set
         return this.mockRecipeSearch(ingredients);
       }
@@ -119,7 +119,7 @@ class RecipeService {
 
   async getRecipeDetails(recipeId: number): Promise<Recipe | null> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         return null;
       }
 
@@ -377,7 +377,7 @@ class RecipeService {
 
   async getRandomRecipes(count: number = 5): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         return this.mockRecipeSearch(['pasta', 'chicken']);
       }
 
@@ -396,7 +396,7 @@ class RecipeService {
     availableIngredients: string[]
   ): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         return this.mockRecipeSearch(availableIngredients);
       }
 
@@ -501,7 +501,7 @@ class RecipeService {
     maxReadyTime?: number;
   }): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         return this.mockRecipeSearch(['pasta', 'chicken']);
       }
 
@@ -602,7 +602,7 @@ class RecipeService {
     };
   }): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         console.log('Spoonacular API key not configured, using mock data');
         return this.mockRecipeSearchByPreferences(preferences);
       }

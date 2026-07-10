@@ -91,7 +91,7 @@ class OCRService {
       // 2. Call Google Vision API
       // 3. Return extracted text
 
-      if (GOOGLE_CLOUD_VISION_API_KEY === 'YOUR_GOOGLE_CLOUD_VISION_API_KEY') {
+      if (!GOOGLE_CLOUD_VISION_API_KEY) {
         return await this.mockOCRProcessing();
       } else {
         // Convert image to base64 and call real API

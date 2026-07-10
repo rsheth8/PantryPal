@@ -268,3 +268,19 @@ BEGIN
   RETURN result;
 END;
 $$ LANGUAGE plpgsql; 
+-- ============================================================
+-- Migration: recipe personalization columns (safe to re-run)
+-- ============================================================
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT false;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating BETWEEN 1 AND 5);
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard'));
+
+-- Helpful indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_grocery_items_added_by ON grocery_items(added_by);
+CREATE INDEX IF NOT EXISTS idx_grocery_items_household ON grocery_items(household_id);
+CREATE INDEX IF NOT EXISTS idx_grocery_items_expiration ON grocery_items(expiration_date);
+CREATE INDEX IF NOT EXISTS idx_shopping_list_added_by ON shopping_list_items(added_by);
+CREATE INDEX IF NOT EXISTS idx_shopping_list_household ON shopping_list_items(household_id);
+CREATE INDEX IF NOT EXISTS idx_recipes_created_by ON recipes(created_by);
+CREATE INDEX IF NOT EXISTS idx_recipes_household ON recipes(household_id);
+CREATE INDEX IF NOT EXISTS idx_users_household ON users(household_id);

@@ -87,9 +87,9 @@ interface MultiUserStore {
   addRecipe: (
     recipe: Omit<Recipe, 'id' | 'createdBy' | 'createdAt'>,
     isShared?: boolean
-  ) => void;
-  updateRecipe: (id: string, updates: Partial<Recipe>) => void;
-  removeRecipe: (id: string) => void;
+  ) => Promise<void>;
+  updateRecipe: (id: string, updates: Partial<Recipe>) => Promise<void>;
+  removeRecipe: (id: string) => Promise<void>;
 
   // Preferences
   updatePreferences: (updates: Partial<UserPreferences>) => void;
@@ -599,18 +599,31 @@ export const useMultiUserStore = create<MultiUserStore>()(
         }
       },
 
-      updateRecipe: (id, updates) => {
+      updateRecipe: async (id, updates) => {
+        // Optimistic local update; persist to Supabase in the background.
         set(state => ({
           recipes: state.recipes.map(recipe =>
             recipe.id === id ? { ...recipe, ...updates } : recipe
           ),
         }));
+        try {
+          await supabaseService.updateRecipe(id, updates);
+        } catch (error) {
+          console.error('Error persisting recipe update:', error);
+        }
       },
 
-      removeRecipe: id => {
+      removeRecipe: async id => {
+        const previous = get().recipes;
         set(state => ({
           recipes: state.recipes.filter(recipe => recipe.id !== id),
         }));
+        try {
+          await supabaseService.deleteRecipe(id);
+        } catch (error) {
+          console.error('Error deleting recipe:', error);
+          set({ recipes: previous });
+        }
       },
 
       // Preferences

@@ -74,6 +74,9 @@ export interface SupabaseRecipe {
   household_id?: string;
   is_shared: boolean;
   created_at: string;
+  is_favorite?: boolean;
+  rating?: number;
+  difficulty?: 'easy' | 'medium' | 'hard';
   // Advanced features
   nutrition?: {
     calories: number;
@@ -587,6 +590,9 @@ class SupabaseService {
       created_by: userId,
       household_id: recipe.householdId,
       is_shared: recipe.isShared,
+      is_favorite: recipe.isFavorite ?? false,
+      rating: recipe.rating,
+      difficulty: recipe.difficulty,
     };
 
     const { data, error } = await supabase
@@ -600,6 +606,48 @@ class SupabaseService {
 
     if (error) throw error;
     return this.convertSupabaseRecipeToRecipe(data);
+  }
+
+  async updateRecipe(
+    id: string,
+    updates: Partial<Recipe>
+  ): Promise<Recipe | null> {
+    const payload: Record<string, unknown> = {};
+    if (updates.title !== undefined) payload.title = updates.title;
+    if (updates.ingredients !== undefined)
+      payload.ingredients = updates.ingredients;
+    if (updates.instructions !== undefined)
+      payload.instructions = updates.instructions;
+    if (updates.prepTime !== undefined) payload.prep_time = updates.prepTime;
+    if (updates.cookTime !== undefined) payload.cook_time = updates.cookTime;
+    if (updates.servings !== undefined) payload.servings = updates.servings;
+    if (updates.image !== undefined) payload.image = updates.image;
+    if (updates.canCookNow !== undefined)
+      payload.can_cook_now = updates.canCookNow;
+    if (updates.missingIngredients !== undefined)
+      payload.missing_ingredients = updates.missingIngredients;
+    if (updates.tags !== undefined) payload.tags = updates.tags;
+    if (updates.isShared !== undefined) payload.is_shared = updates.isShared;
+    if (updates.isFavorite !== undefined)
+      payload.is_favorite = updates.isFavorite;
+    if (updates.rating !== undefined) payload.rating = updates.rating;
+    if (updates.difficulty !== undefined)
+      payload.difficulty = updates.difficulty;
+
+    const { data, error } = await supabase
+      .from('recipes')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.convertSupabaseRecipeToRecipe(data);
+  }
+
+  async deleteRecipe(id: string): Promise<void> {
+    const { error } = await supabase.from('recipes').delete().eq('id', id);
+    if (error) throw error;
   }
 
   // Utility Methods
@@ -717,6 +765,9 @@ class SupabaseService {
       householdId: supabaseRecipe.household_id,
       isShared: supabaseRecipe.is_shared,
       createdAt: supabaseRecipe.created_at,
+      isFavorite: supabaseRecipe.is_favorite ?? false,
+      rating: supabaseRecipe.rating,
+      difficulty: supabaseRecipe.difficulty,
       // Advanced features
       nutrition: supabaseRecipe.nutrition,
       cuisines: supabaseRecipe.cuisines,

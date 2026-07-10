@@ -1,39 +1,104 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { colors, typography } from '../utils/designSystem';
+import { createStackNavigator } from '@react-navigation/stack';
+import { Animated, Text } from 'react-native';
+import { typography } from '../utils/designSystem';
+import { useTheme } from '../theme/ThemeContext';
 import DashboardScreen from '../features/dashboard/DashboardScreen';
 import PantryScreen from '../features/pantry/PantryScreen';
 import RecipesScreen from '../features/recipes/RecipesScreen';
 import ShoppingListScreen from '../features/shoppingList/ShoppingListScreen';
 import ScannerScreen from '../features/scanner/ScannerScreen';
 import SettingsScreen from '../features/settings/SettingsScreen';
-import { Text } from 'react-native';
+import MealPlanningScreen from '../features/mealPlanning/MealPlanningScreen';
+import HouseholdScreen from '../features/household/HouseholdScreen';
+import AnalyticsScreen from '../features/analytics/AnalyticsScreen';
 
 const Tab = createBottomTabNavigator();
+const HomeStack = createStackNavigator();
+
+// Dashboard hosts a stack so deeper features (meal planning, household,
+// analytics) are reachable without crowding the tab bar.
+function HomeStackNavigator() {
+  return (
+    <HomeStack.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStack.Screen name='DashboardHome' component={DashboardScreen} />
+      <HomeStack.Screen name='MealPlanning' component={MealPlanningScreen} />
+      <HomeStack.Screen name='Household' component={HouseholdScreen} />
+      <HomeStack.Screen name='Analytics' component={AnalyticsScreen} />
+    </HomeStack.Navigator>
+  );
+}
 
 interface MainTabNavigatorProps {
   onSignOut?: () => void;
 }
 
+// Tab icon that springs up slightly when focused.
+function TabIcon({
+  emoji,
+  color,
+  size,
+  focused,
+}: {
+  emoji: string;
+  color: string;
+  size: number;
+  focused: boolean;
+}) {
+  const scale = useRef(new Animated.Value(focused ? 1 : 0.9)).current;
+
+  useEffect(() => {
+    Animated.spring(scale, {
+      toValue: focused ? 1.15 : 0.9,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 10,
+    }).start();
+  }, [focused, scale]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Text style={{ color, fontSize: size }}>{emoji}</Text>
+    </Animated.View>
+  );
+}
+
 export default function MainTabNavigator({ onSignOut }: MainTabNavigatorProps) {
+  const { theme } = useTheme();
+
+  const makeIcon = (emoji: string) => {
+    const IconRenderer = ({
+      color,
+      size,
+      focused,
+    }: {
+      color: string;
+      size: number;
+      focused: boolean;
+    }) => <TabIcon emoji={emoji} color={color} size={size} focused={focused} />;
+    IconRenderer.displayName = `TabIcon(${emoji})`;
+    return IconRenderer;
+  };
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: theme.colors.tabBar,
           borderTopWidth: 0,
-          elevation: 0,
-          shadowColor: '#000',
+          elevation: 8,
+          shadowColor: theme.colors.shadow,
           shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.1,
+          shadowOpacity: theme.isDark ? 0.4 : 0.1,
           shadowRadius: 12,
           height: 88,
           paddingBottom: 20,
           paddingTop: 12,
         },
-        tabBarActiveTintColor: colors.primary[600],
-        tabBarInactiveTintColor: colors.neutral[400],
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarLabelStyle: {
           ...typography.caption,
           fontWeight: '600',
@@ -46,12 +111,10 @@ export default function MainTabNavigator({ onSignOut }: MainTabNavigatorProps) {
     >
       <Tab.Screen
         name='Dashboard'
-        component={DashboardScreen}
+        component={HomeStackNavigator}
         options={{
-          tabBarLabel: 'Dashboard',
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ color, fontSize: size }}>📊</Text>
-          ),
+          tabBarLabel: 'Home',
+          tabBarIcon: makeIcon('📊'),
         }}
       />
       <Tab.Screen
@@ -59,29 +122,7 @@ export default function MainTabNavigator({ onSignOut }: MainTabNavigatorProps) {
         component={PantryScreen}
         options={{
           tabBarLabel: 'Pantry',
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ color, fontSize: size }}>🥫</Text>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name='Recipes'
-        component={RecipesScreen}
-        options={{
-          tabBarLabel: 'Recipes',
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ color, fontSize: size }}>📖</Text>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name='Shopping'
-        component={ShoppingListScreen}
-        options={{
-          tabBarLabel: 'Shopping',
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ color, fontSize: size }}>🛒</Text>
-          ),
+          tabBarIcon: makeIcon('🥫'),
         }}
       />
       <Tab.Screen
@@ -89,18 +130,30 @@ export default function MainTabNavigator({ onSignOut }: MainTabNavigatorProps) {
         component={ScannerScreen}
         options={{
           tabBarLabel: 'Scan',
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ color, fontSize: size }}>📱</Text>
-          ),
+          tabBarIcon: makeIcon('📷'),
+        }}
+      />
+      <Tab.Screen
+        name='Recipes'
+        component={RecipesScreen}
+        options={{
+          tabBarLabel: 'Recipes',
+          tabBarIcon: makeIcon('📖'),
+        }}
+      />
+      <Tab.Screen
+        name='Shopping'
+        component={ShoppingListScreen}
+        options={{
+          tabBarLabel: 'Shopping',
+          tabBarIcon: makeIcon('🛒'),
         }}
       />
       <Tab.Screen
         name='Settings'
         options={{
           tabBarLabel: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ color, fontSize: size }}>⚙️</Text>
-          ),
+          tabBarIcon: makeIcon('⚙️'),
         }}
       >
         {() => <SettingsScreen onSignOut={onSignOut} />}

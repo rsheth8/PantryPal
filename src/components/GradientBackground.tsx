@@ -1,13 +1,14 @@
 import React from 'react';
-import { ViewStyle } from 'react-native';
+import { StyleProp, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { gradients } from '../utils/designSystem';
+import { useTheme } from '../theme/ThemeContext';
 
 interface GradientBackgroundProps {
   children: React.ReactNode;
   gradient?: keyof typeof gradients;
   colors?: string[];
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   start?: { x: number; y: number };
   end?: { x: number; y: number };
 }
@@ -20,18 +21,19 @@ export default function GradientBackground({
   start = { x: 0, y: 0 },
   end = { x: 1, y: 1 },
 }: GradientBackgroundProps) {
-  // Get gradient colors with fallback
+  const { theme } = useTheme();
+
   const getGradientColors = (): string[] => {
     if (customColors && customColors.length >= 2) {
       return customColors;
     }
 
-    if (gradients && gradients[gradient]) {
-      return gradients[gradient];
+    // Theme-aware gradients: dark mode uses deeper stops.
+    if (theme.gradients && theme.gradients[gradient]) {
+      return theme.gradients[gradient];
     }
 
-    // Fallback to primary gradient
-    return ['#3B82F6', '#1D4ED8'];
+    return ['#14B8A6', '#0D9488'];
   };
 
   const gradientColors = getGradientColors();
