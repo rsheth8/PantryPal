@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { logger } from '../utils/logger';
 import { Platform } from 'react-native';
 import { GroceryItem } from '../types';
 
@@ -44,7 +45,7 @@ class NotificationService {
 
       return finalStatus === 'granted';
     } catch (error) {
-      console.error('Failed to request notification permissions:', error);
+      logger.error('Failed to request notification permissions:', error);
       return false;
     }
   }
@@ -53,7 +54,7 @@ class NotificationService {
     try {
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
-        console.log('Notification permissions not granted');
+        logger.debug('Notification permissions not granted');
         return;
       }
 
@@ -89,9 +90,9 @@ class NotificationService {
         });
       }
 
-      console.log('Notifications setup complete');
+      logger.debug('Notifications setup complete');
     } catch (error) {
-      console.error('Failed to setup notifications:', error);
+      logger.error('Failed to setup notifications:', error);
     }
   }
 
@@ -123,7 +124,7 @@ class NotificationService {
         });
       }
     } catch (error) {
-      console.error('Failed to schedule expiration notification:', error);
+      logger.error('Failed to schedule expiration notification:', error);
     }
   }
 
@@ -136,6 +137,10 @@ class NotificationService {
       if (item.quantity <= 1) {
         const trigger = new Date();
         trigger.setHours(18, 0, 0, 0); // 6 PM
+        // If 6 PM has already passed today, notify tomorrow instead.
+        if (trigger.getTime() <= Date.now()) {
+          trigger.setDate(trigger.getDate() + 1);
+        }
 
         await Notifications.scheduleNotificationAsync({
           content: {
@@ -155,7 +160,7 @@ class NotificationService {
         });
       }
     } catch (error) {
-      console.error('Failed to schedule low stock notification:', error);
+      logger.error('Failed to schedule low stock notification:', error);
     }
   }
 
@@ -189,7 +194,7 @@ class NotificationService {
         },
       });
     } catch (error) {
-      console.error('Failed to schedule household notification:', error);
+      logger.error('Failed to schedule household notification:', error);
     }
   }
 
@@ -217,7 +222,7 @@ class NotificationService {
         },
       });
     } catch (error) {
-      console.error('Failed to schedule shopping reminder:', error);
+      logger.error('Failed to schedule shopping reminder:', error);
     }
   }
 
@@ -225,7 +230,7 @@ class NotificationService {
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {
-      console.error('Failed to cancel all notifications:', error);
+      logger.error('Failed to cancel all notifications:', error);
     }
   }
 
@@ -233,7 +238,7 @@ class NotificationService {
     try {
       await Notifications.cancelScheduledNotificationAsync(notificationId);
     } catch (error) {
-      console.error('Failed to cancel notification:', error);
+      logger.error('Failed to cancel notification:', error);
     }
   }
 
@@ -249,7 +254,7 @@ class NotificationService {
     try {
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
-        console.log('No notification permissions');
+        logger.debug('No notification permissions');
         return;
       }
 
@@ -265,7 +270,7 @@ class NotificationService {
         },
       });
     } catch (error) {
-      console.error('Failed to send test notification:', error);
+      logger.error('Failed to send test notification:', error);
     }
   }
 
@@ -282,7 +287,7 @@ class NotificationService {
         channelId,
       };
     } catch (error) {
-      console.error('Failed to get notification settings:', error);
+      logger.error('Failed to get notification settings:', error);
       return { permissions: false };
     }
   }
@@ -293,7 +298,7 @@ class NotificationService {
     try {
       return await Notifications.getAllScheduledNotificationsAsync();
     } catch (error) {
-      console.error('Failed to get scheduled notifications:', error);
+      logger.error('Failed to get scheduled notifications:', error);
       return [];
     }
   }

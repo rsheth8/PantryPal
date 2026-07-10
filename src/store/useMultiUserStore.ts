@@ -15,6 +15,7 @@ import { userService } from '../services/userService';
 import { supabaseService } from '../services/supabaseService';
 import { notificationService } from '../services/notificationService';
 import { isDevMode } from '../config/dev';
+import { logger } from '../utils/logger';
 
 // Clear Zustand persisted storage in dev mode
 if (isDevMode()) {
@@ -134,34 +135,34 @@ export const useMultiUserStore = create<MultiUserStore>()(
       initializeUser: async () => {
         set({ isLoading: true });
         try {
-          console.log('Store: Initializing user...');
+          logger.debug('Store: Initializing user...');
 
           // Initialize auth service
           await authService.initialize();
 
           // Get authenticated user
           const authUser = await authService.getCurrentUser();
-          console.log('Store: Auth user:', authUser);
+          logger.debug('Store: Auth user:', authUser);
 
           if (!authUser) {
-            console.log('Store: No auth user found');
+            logger.debug('Store: No auth user found');
             set({ isLoading: false });
             return;
           }
 
           // Convert auth user to app user
           const user = authService.convertToUser(authUser);
-          console.log('Store: Converted user:', user);
+          logger.debug('Store: Converted user:', user);
 
           // Initialize user service
           await userService.initialize();
 
           // Check if user exists in user service, if not create them
           let existingUser = await userService.getUserById(user.id);
-          console.log('Store: Existing user from service:', existingUser);
+          logger.debug('Store: Existing user from service:', existingUser);
 
           if (!existingUser) {
-            console.log('Store: User not found in service, creating...');
+            logger.debug('Store: User not found in service, creating...');
             try {
               existingUser = await userService.createUser(
                 user.name,
@@ -169,9 +170,9 @@ export const useMultiUserStore = create<MultiUserStore>()(
                 user.avatar,
                 user.id
               );
-              console.log('Store: Created user:', existingUser);
+              logger.debug('Store: Created user:', existingUser);
             } catch (error) {
-              console.error('Store: Error creating user:', error);
+              logger.error('Store: Error creating user:', error);
               set({ isLoading: false });
               return;
             }
@@ -184,25 +185,25 @@ export const useMultiUserStore = create<MultiUserStore>()(
           let household: Household | null = null;
           let users: User[] = [];
           if (existingUser.household_id) {
-            console.log('Store: User has household, loading...');
-            console.log('Store: household_id:', existingUser.household_id);
+            logger.debug('Store: User has household, loading...');
+            logger.debug('Store: household_id:', existingUser.household_id);
             try {
               household = await userService.getHouseholdById(
                 existingUser.household_id
               );
-              console.log('Store: Loaded household:', household);
+              logger.debug('Store: Loaded household:', household);
               if (household) {
                 users = await userService.getHouseholdMembers(household.id);
-                console.log('Store: Loaded users:', users);
+                logger.debug('Store: Loaded users:', users);
                 set({ currentHousehold: household, users });
               } else {
-                console.log(
+                logger.debug(
                   'Store: No household found for ID:',
                   existingUser.household_id
                 );
               }
             } catch (error) {
-              console.error('Store: Error loading household:', error);
+              logger.error('Store: Error loading household:', error);
             }
           }
 
@@ -226,7 +227,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
               )
             : [];
 
-          console.log('Store: Setting state with user:', existingUser);
+          logger.debug('Store: Setting state with user:', existingUser);
           set({
             currentUser: existingUser,
             currentHousehold: household,
@@ -237,7 +238,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
             isLoading: false,
           });
         } catch (error) {
-          console.error('Store: Error initializing user:', error);
+          logger.error('Store: Error initializing user:', error);
           set({ error: 'Failed to initialize user', isLoading: false });
         }
       },
@@ -286,7 +287,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
           }
           return false;
         } catch (error) {
-          console.error('Error joining household:', error);
+          logger.error('Error joining household:', error);
           return false;
         }
       },
@@ -328,7 +329,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
             set({ currentHousehold: updatedHousehold });
           }
         } catch (error) {
-          console.error('Error updating household settings:', error);
+          logger.error('Error updating household settings:', error);
           set({ error: 'Failed to update household settings' });
         }
       },
@@ -371,7 +372,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
             );
           }
         } catch (error) {
-          console.error('Error adding grocery item:', error);
+          logger.error('Error adding grocery item:', error);
           set({ error: 'Failed to add item' });
         }
       },
@@ -415,7 +416,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
             }
           }
         } catch (error) {
-          console.error('Error updating grocery item:', error);
+          logger.error('Error updating grocery item:', error);
           set({ error: 'Failed to update item' });
         }
       },
@@ -441,7 +442,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
             );
           }
         } catch (error) {
-          console.error('Error removing grocery item:', error);
+          logger.error('Error removing grocery item:', error);
           set({ error: 'Failed to remove item' });
         }
       },
@@ -464,7 +465,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
             );
           }
         } catch (error) {
-          console.error('Error marking item as used:', error);
+          logger.error('Error marking item as used:', error);
         }
       },
 
@@ -491,7 +492,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
 
           set(state => ({ shoppingList: [...state.shoppingList, newItem] }));
         } catch (error) {
-          console.error('Error adding shopping list item:', error);
+          logger.error('Error adding shopping list item:', error);
           set({ error: 'Failed to add item' });
         }
       },
@@ -513,7 +514,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
             }));
           }
         } catch (error) {
-          console.error('Error updating shopping list item:', error);
+          logger.error('Error updating shopping list item:', error);
           set({ error: 'Failed to update item' });
         }
       },
@@ -528,7 +529,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
             shoppingList: state.shoppingList.filter(item => item.id !== id),
           }));
         } catch (error) {
-          console.error('Error removing shopping list item:', error);
+          logger.error('Error removing shopping list item:', error);
           set({ error: 'Failed to remove item' });
         }
       },
@@ -555,7 +556,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
             }
           }
         } catch (error) {
-          console.error('Error toggling shopping list item:', error);
+          logger.error('Error toggling shopping list item:', error);
           set({ error: 'Failed to update item' });
         }
       },
@@ -572,7 +573,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
           );
           set({ pantry: pantryItems });
         } catch (error) {
-          console.error('Error refreshing pantry:', error);
+          logger.error('Error refreshing pantry:', error);
         }
       },
 
@@ -594,7 +595,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
 
           set(state => ({ recipes: [...state.recipes, newRecipe] }));
         } catch (error) {
-          console.error('Error adding recipe:', error);
+          logger.error('Error adding recipe:', error);
           set({ error: 'Failed to add recipe' });
         }
       },
@@ -609,7 +610,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
         try {
           await supabaseService.updateRecipe(id, updates);
         } catch (error) {
-          console.error('Error persisting recipe update:', error);
+          logger.error('Error persisting recipe update:', error);
         }
       },
 
@@ -621,7 +622,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
         try {
           await supabaseService.deleteRecipe(id);
         } catch (error) {
-          console.error('Error deleting recipe:', error);
+          logger.error('Error deleting recipe:', error);
           set({ recipes: previous });
         }
       },

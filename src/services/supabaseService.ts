@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import {
   User,
   Household,
@@ -7,14 +6,10 @@ import {
   ShoppingListItem,
 } from '../types';
 import { isDevMode, getCurrentDevUser } from '../config/dev';
+import { logger } from '../utils/logger';
 
-import { SUPABASE_CONFIG } from '../config/supabase';
-
-const SUPABASE_URL = SUPABASE_CONFIG.URL;
-const SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
-
-// Create Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Shared client (single instance app-wide, AsyncStorage-backed sessions).
+import { supabase } from '../config/supabase';
 
 export interface SupabaseUser {
   id: string;
@@ -127,7 +122,7 @@ class SupabaseService {
     try {
       // Development mode bypass
       if (isDevMode()) {
-        console.log('DEV MODE: Returning test user from supabase service');
+        logger.debug('DEV MODE: Returning test user from supabase service');
         const devUser = getCurrentDevUser();
         return {
           ...devUser,
@@ -153,7 +148,7 @@ class SupabaseService {
       }
       return null;
     } catch (error) {
-      console.error('Error getting current user:', error);
+      logger.error('Error getting current user:', error);
       return null;
     }
   }
@@ -218,14 +213,14 @@ class SupabaseService {
         // Try to disable RLS temporarily for development
         await supabase.rpc('disable_rls_for_dev');
       } catch (error) {
-        console.log('Could not disable RLS, continuing with normal flow');
+        logger.debug('Could not disable RLS, continuing with normal flow');
       }
     }
   }
 
   // Household Management
   async createHousehold(name: string, ownerId: string): Promise<Household> {
-    console.log('Starting household creation for owner:', ownerId);
+    logger.debug('Starting household creation for owner:', ownerId);
 
     // First, check if the user exists in our users table
     const { data: user, error: userError } = await supabase
@@ -235,11 +230,11 @@ class SupabaseService {
       .single();
 
     if (userError || !user) {
-      console.error('User not found or error:', userError);
+      logger.error('User not found or error:', userError);
 
       // For dev mode, create the user first
       if (isDevMode()) {
-        console.log('Creating user for dev mode');
+        logger.debug('Creating user for dev mode');
 
         // Try to create the user profile
         const { error: createUserError } = await supabase.from('users').insert({
@@ -252,15 +247,15 @@ class SupabaseService {
         });
 
         if (createUserError) {
-          console.error('Error creating user profile:', createUserError);
+          logger.error('Error creating user profile:', createUserError);
 
           // If user creation fails, let's try creating the household anyway
           // The household creation should work even if the user doesn't exist yet
-          console.log(
+          logger.debug(
             'Proceeding with household creation despite user creation failure'
           );
         } else {
-          console.log('User created successfully');
+          logger.debug('User created successfully');
         }
       } else {
         throw new Error('User not found');
@@ -283,7 +278,7 @@ class SupabaseService {
       },
     };
 
-    console.log('Creating household with data:', newHousehold);
+    logger.debug('Creating household with data:', newHousehold);
 
     const { data, error } = await supabase
       .from('households')
@@ -292,11 +287,11 @@ class SupabaseService {
       .single();
 
     if (error) {
-      console.error('Supabase error creating household:', error);
+      logger.error('Supabase error creating household:', error);
       throw error;
     }
 
-    console.log('Household created successfully:', data);
+    logger.debug('Household created successfully:', data);
 
     // Try to update user's household, but don't fail if it doesn't work
     const { error: updateError } = await supabase
@@ -305,13 +300,13 @@ class SupabaseService {
       .eq('id', ownerId);
 
     if (updateError) {
-      console.error(
+      logger.error(
         'Error updating user household (non-critical):',
         updateError
       );
       // Don't throw here, as the household was created successfully
     } else {
-      console.log('User household updated successfully');
+      logger.debug('User household updated successfully');
     }
 
     return this.convertSupabaseHouseholdToHousehold(data);

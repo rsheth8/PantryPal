@@ -69,8 +69,8 @@ export const initializeDevUser = async () => {
     if (storedUserId) {
       currentDevUserId = storedUserId;
     }
-  } catch (error) {
-    console.log('DEV MODE: Error loading stored user ID, using default');
+  } catch {
+    // Non-fatal: fall back to the default dev user.
   }
 };
 

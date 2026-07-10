@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
 import { API_CONFIG } from '../config/api';
 
 // You'll need to get a Google Cloud Vision API key
@@ -52,7 +53,7 @@ class OCRService {
       }
       return '';
     } catch (error) {
-      console.error('Google Vision API error:', error);
+      logger.error('Google Vision API error:', error);
       throw new Error('Failed to extract text from image');
     }
   }
@@ -99,7 +100,7 @@ class OCRService {
         return await this.callGoogleVisionAPI(base64);
       }
     } catch (error) {
-      console.error('OCR processing error:', error);
+      logger.error('OCR processing error:', error);
       throw error;
     }
   }

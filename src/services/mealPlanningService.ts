@@ -7,6 +7,8 @@ import {
 } from '../types';
 import { generateId } from '../utils/helpers';
 import { recipeService } from './recipeService';
+import { supabaseService } from './supabaseService';
+import { logger } from '../utils/logger';
 
 export interface MealPlanningOptions {
   includeBreakfast: boolean;
@@ -38,10 +40,10 @@ class MealPlanningService {
     userId: string,
     householdId?: string
   ): Promise<MealPlan> {
-    console.log('LOG Meal Planning: Starting meal plan generation');
-    console.log('LOG Meal Planning: Input recipes count:', recipes.length);
-    console.log('LOG Meal Planning: Input pantry count:', pantry.length);
-    console.log(
+    logger.debug('LOG Meal Planning: Starting meal plan generation');
+    logger.debug('LOG Meal Planning: Input recipes count:', recipes.length);
+    logger.debug('LOG Meal Planning: Input pantry count:', pantry.length);
+    logger.debug(
       'LOG Meal Planning: Options:',
       JSON.stringify(options, null, 2)
     );
@@ -62,29 +64,32 @@ class MealPlanningService {
     // Use ALL recipes for meal planning, not just "can cook now"
     // This gives users unlimited menu options regardless of current pantry
     const allRecipes = [...recipes];
-    console.log(
+    logger.debug(
       'LOG Meal Planning: Using all recipes for unlimited menu options'
     );
-    console.log('LOG Meal Planning: Initial recipes count:', allRecipes.length);
+    logger.debug(
+      'LOG Meal Planning: Initial recipes count:',
+      allRecipes.length
+    );
 
     // If explore new recipes is enabled, fetch additional recipes from external API
     if (options.exploreNewRecipes) {
-      console.log(
+      logger.debug(
         'LOG Meal Planning: Explore new recipes is enabled, but external API is temporarily disabled due to quota issues'
       );
-      console.log('LOG Meal Planning: Using local recipes only for now');
+      logger.debug('LOG Meal Planning: Using local recipes only for now');
       // TODO: Re-enable when API quota is available
       // try {
       //   const externalRecipes = await this.fetchExploratoryRecipes(options.dietaryPreferences, availableIngredients);
       //   allRecipes = [...recipes, ...externalRecipes];
-      //   console.log(`LOG Meal Planning: Added ${externalRecipes.length} external recipes for exploration`);
-      //   console.log('LOG Meal Planning: Total recipes after external fetch:', allRecipes.length);
+      //   logger.debug(`LOG Meal Planning: Added ${externalRecipes.length} external recipes for exploration`);
+      //   logger.debug('LOG Meal Planning: Total recipes after external fetch:', allRecipes.length);
       // } catch (error) {
-      //   console.log('LOG Meal Planning: Could not fetch external recipes, using local recipes only');
-      //   console.error('LOG Meal Planning: External recipe fetch error:', error);
+      //   logger.debug('LOG Meal Planning: Could not fetch external recipes, using local recipes only');
+      //   logger.error('LOG Meal Planning: External recipe fetch error:', error);
       // }
     } else {
-      console.log(
+      logger.debug(
         'LOG Meal Planning: Explore new recipes is disabled, using local recipes only'
       );
     }
@@ -92,11 +97,11 @@ class MealPlanningService {
     // Filter recipes based on dietary preferences first
     let availableRecipes = allRecipes;
     if (options.dietaryPreferences) {
-      console.log(
+      logger.debug(
         'LOG Dietary Filtering: Starting filtering with preferences:',
         options.dietaryPreferences
       );
-      console.log(
+      logger.debug(
         'LOG Dietary Filtering: Total recipes to filter:',
         allRecipes.length
       );
@@ -108,13 +113,13 @@ class MealPlanningService {
       availableRecipes = filteredRecipes;
     }
 
-    console.log(
+    logger.debug(
       `LOG Meal Planning: ${availableRecipes.length} recipes available after filtering`
     );
 
     // If no recipes available after filtering, use all recipes as fallback
     if (availableRecipes.length === 0) {
-      console.log(
+      logger.debug(
         'LOG Meal Planning: No recipes passed dietary filters, using all recipes as fallback'
       );
       availableRecipes = allRecipes;
@@ -123,7 +128,7 @@ class MealPlanningService {
     // Track used recipes to ensure variety
     const usedRecipes = new Set<string>();
 
-    console.log('LOG Meal Planning: Starting meal selection for each day...');
+    logger.debug('LOG Meal Planning: Starting meal selection for each day...');
 
     // Generate meals for each day
     for (const day of daysOfWeek) {
@@ -177,7 +182,7 @@ class MealPlanningService {
       }
     }
 
-    console.log(
+    logger.debug(
       'LOG Meal Planning: Final meals object:',
       JSON.stringify(meals, null, 2)
     );
@@ -193,37 +198,37 @@ class MealPlanningService {
     };
 
     // Calculate total nutrition
-    console.log('LOG Meal Planning: Calculating total nutrition...');
+    logger.debug('LOG Meal Planning: Calculating total nutrition...');
     mealPlan.totalNutrition = this.calculateTotalNutrition(mealPlan);
 
     // Generate shopping list
-    console.log('LOG Meal Planning: Generating shopping list...');
+    logger.debug('LOG Meal Planning: Generating shopping list...');
     mealPlan.shoppingList = this.generateShoppingListFromMealPlan(
       mealPlan,
       pantry
     );
 
-    console.log(
+    logger.debug(
       `LOG Meal Planning: Generated meal plan with ${usedRecipes.size} unique recipes`
     );
-    console.log(
+    logger.debug(
       'LOG Meal Planning: Final meal plan:',
       JSON.stringify(mealPlan, null, 2)
     );
 
     // Add detailed summary of what was selected
-    console.log('\n🍳 MEAL PLAN SUMMARY:');
-    console.log('=====================');
+    logger.debug('\n🍳 MEAL PLAN SUMMARY:');
+    logger.debug('=====================');
     Object.entries(mealPlan.meals).forEach(([day, dayMeals]) => {
-      console.log(`\n📅 ${day.toUpperCase()}:`);
+      logger.debug(`\n📅 ${day.toUpperCase()}:`);
       Object.entries(dayMeals).forEach(([mealType, meal]) => {
         if (mealType === 'snacks' && Array.isArray(meal)) {
           meal.forEach(snack => {
-            console.log(`  🍎 ${mealType}: ${snack.recipeTitle}`);
+            logger.debug(`  🍎 ${mealType}: ${snack.recipeTitle}`);
           });
         } else if (meal && typeof meal === 'object' && 'recipeTitle' in meal) {
           const singleMeal = meal as PlannedMeal;
-          console.log(`  🍽️  ${mealType}: ${singleMeal.recipeTitle}`);
+          logger.debug(`  🍽️  ${mealType}: ${singleMeal.recipeTitle}`);
         }
       });
     });
@@ -233,15 +238,15 @@ class MealPlanningService {
       day => Object.keys(day).length > 0
     ).length;
 
-    console.log(`\n📊 SUMMARY:`);
-    console.log(`- Days with meals: ${daysWithMeals}/7`);
-    console.log(`- Unique recipes used: ${usedRecipes.size}`);
-    console.log(
+    logger.debug(`\n📊 SUMMARY:`);
+    logger.debug(`- Days with meals: ${daysWithMeals}/7`);
+    logger.debug(`- Unique recipes used: ${usedRecipes.size}`);
+    logger.debug(
       `- Total meals planned: ${Object.values(mealPlan.meals).reduce((total, day) => total + Object.keys(day).length, 0)}`
     );
 
     if (daysWithMeals < 7) {
-      console.log(
+      logger.debug(
         `⚠️  WARNING: Only ${daysWithMeals} days have meals. This means some recipes don't match your strict preferences.`
       );
     }
@@ -285,7 +290,7 @@ class MealPlanningService {
           .join(','); // Limit to 5 ingredients
       }
 
-      console.log(
+      logger.debug(
         'LOG Meal Planning: Fetching external recipes with params:',
         searchParams
       );
@@ -402,7 +407,7 @@ class MealPlanningService {
         };
       });
     } catch (error) {
-      console.error(
+      logger.error(
         'LOG Meal Planning: Error fetching external recipes:',
         error
       );
@@ -431,24 +436,26 @@ class MealPlanningService {
     recipes: Recipe[],
     preferences: DietaryPreferences
   ): Recipe[] {
-    console.log(
+    logger.debug(
       'LOG Dietary Filtering: Starting filtering with preferences:',
       preferences
     );
-    console.log(
+    logger.debug(
       'LOG Dietary Filtering: Total recipes to filter:',
       recipes.length
     );
 
     const filteredRecipes = recipes.filter(recipe => {
-      console.log(`\nLOG Dietary Filtering: Checking recipe "${recipe.title}"`);
-      console.log(
+      logger.debug(
+        `\nLOG Dietary Filtering: Checking recipe "${recipe.title}"`
+      );
+      logger.debug(
         `LOG Dietary Filtering: Recipe cuisines: [${(recipe.cuisines || []).join(', ')}]`
       );
-      console.log(
+      logger.debug(
         `LOG Dietary Filtering: Recipe diets: [${(recipe.diets || []).join(', ')}]`
       );
-      console.log(
+      logger.debug(
         `LOG Dietary Filtering: Recipe allergens: [${(recipe.allergens || []).join(', ')}]`
       );
 
@@ -492,11 +499,11 @@ class MealPlanningService {
                 ingredients.includes(keyword) || title.includes(keyword)
             );
             if (!hasMeat) {
-              console.log(
+              logger.debug(
                 `LOG Dietary Filtering: Recipe "${recipe.title}" accepted as vegetarian (no meat detected)`
               );
             } else {
-              console.log(
+              logger.debug(
                 `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - contains meat`
               );
               return false;
@@ -527,23 +534,23 @@ class MealPlanningService {
                 ingredients.includes(keyword) || title.includes(keyword)
             );
             if (!hasAnimal) {
-              console.log(
+              logger.debug(
                 `LOG Dietary Filtering: Recipe "${recipe.title}" accepted as vegan (no animal products detected)`
               );
             } else {
-              console.log(
+              logger.debug(
                 `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - contains animal products`
               );
               return false;
             }
           }
         } else if (!hasMatchingDiet) {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - no matching diet. Recipe diets: [${recipeDiets.join(', ')}], Effective preferences: [${effectivePreferences.join(', ')}]`
           );
           return false;
         } else {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" diet match: [${recipeDiets.join(', ')}]`
           );
         }
@@ -557,12 +564,12 @@ class MealPlanningService {
         );
 
         if (!hasMatchingCuisine) {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - no matching cuisine. Recipe cuisines: [${recipeCuisines.join(', ')}], Preferred: [${preferences.cuisines.join(', ')}]`
           );
           return false;
         } else {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" cuisine match: [${recipeCuisines.join(', ')}]`
           );
         }
@@ -575,7 +582,7 @@ class MealPlanningService {
           recipeAllergens.includes(allergen)
         );
         if (hasAllergen) {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - contains allergen`
           );
           return false;
@@ -585,7 +592,7 @@ class MealPlanningService {
       // Check difficulty
       if (preferences.difficulty !== 'any' && recipe.difficulty) {
         if (recipe.difficulty !== preferences.difficulty) {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - difficulty mismatch. Recipe: ${recipe.difficulty}, Preferred: ${preferences.difficulty}`
           );
           return false;
@@ -598,42 +605,42 @@ class MealPlanningService {
         const nutrition = recipe.nutrition;
 
         if (goals.maxCalories && nutrition.calories > goals.maxCalories) {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - too many calories (${nutrition.calories} > ${goals.maxCalories})`
           );
           return false;
         }
         if (goals.minProtein && nutrition.protein < goals.minProtein) {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - too little protein (${nutrition.protein} < ${goals.minProtein})`
           );
           return false;
         }
         if (goals.maxCarbs && nutrition.carbs > goals.maxCarbs) {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - too many carbs (${nutrition.carbs} > ${goals.maxCarbs})`
           );
           return false;
         }
         if (goals.maxFat && nutrition.fat > goals.maxFat) {
-          console.log(
+          logger.debug(
             `LOG Dietary Filtering: Recipe "${recipe.title}" filtered out - too much fat (${nutrition.fat} > ${goals.maxFat})`
           );
           return false;
         }
       }
 
-      console.log(
+      logger.debug(
         `LOG Dietary Filtering: ✅ Recipe "${recipe.title}" passed all filters`
       );
       return true;
     });
 
-    console.log(
+    logger.debug(
       `\nLOG Dietary Filtering: Filtering complete. ${filteredRecipes.length} recipes passed all filters:`
     );
     filteredRecipes.forEach((recipe, index) => {
-      console.log(
+      logger.debug(
         `  ${index + 1}. ${recipe.title} (${recipe.cuisines?.join(', ') || 'no cuisine'}, ${recipe.diets?.join(', ') || 'no diet'})`
       );
     });
@@ -650,11 +657,11 @@ class MealPlanningService {
     options: MealPlanningOptions,
     usedRecipes: Set<string>
   ): PlannedMeal | undefined {
-    console.log(`\nLOG Recipe Selection: Starting selection for ${mealType}`);
-    console.log(
+    logger.debug(`\nLOG Recipe Selection: Starting selection for ${mealType}`);
+    logger.debug(
       `LOG Recipe Selection: Total recipes available: ${recipes.length}`
     );
-    console.log(
+    logger.debug(
       `LOG Recipe Selection: Used recipes count: ${usedRecipes.size}`
     );
 
@@ -665,21 +672,21 @@ class MealPlanningService {
       options
     );
 
-    console.log(
+    logger.debug(
       `LOG Recipe Selection: ${filteredRecipes.length} recipes available for ${mealType} after meal type filtering`
     );
 
     // If no recipes match meal type, use any available recipe
     let availableRecipes = filteredRecipes;
     if (filteredRecipes.length === 0) {
-      console.log(
+      logger.debug(
         `LOG Recipe Selection: No recipes match ${mealType} preferences, using any available recipe`
       );
       availableRecipes = recipes;
     }
 
     if (availableRecipes.length === 0) {
-      console.log(
+      logger.debug(
         `LOG Recipe Selection: ❌ No recipes available at all for ${mealType}`
       );
       return undefined;
@@ -690,21 +697,21 @@ class MealPlanningService {
       recipe => !usedRecipes.has(recipe.id)
     );
 
-    console.log(
+    logger.debug(
       `LOG Recipe Selection: ${unusedRecipes.length} unused recipes available for ${mealType}`
     );
 
     // If all recipes have been used, allow reuse but prefer unused ones
     let selectedRecipes = unusedRecipes;
     if (unusedRecipes.length === 0) {
-      console.log(
+      logger.debug(
         `LOG Recipe Selection: All recipes used, allowing reuse for ${mealType}`
       );
       selectedRecipes = availableRecipes;
     }
 
     if (selectedRecipes.length === 0) {
-      console.log(
+      logger.debug(
         `LOG Recipe Selection: ❌ No recipes available for ${mealType}`
       );
       return undefined;
@@ -715,13 +722,13 @@ class MealPlanningService {
       selectedRecipes[Math.floor(Math.random() * selectedRecipes.length)];
     usedRecipes.add(selectedRecipe.id);
 
-    console.log(
+    logger.debug(
       `LOG Recipe Selection: ✅ Selected "${selectedRecipe.title}" for ${mealType}`
     );
-    console.log(
+    logger.debug(
       `LOG Recipe Selection: Recipe details - Cuisine: [${selectedRecipe.cuisines?.join(', ') || 'none'}], Diet: [${selectedRecipe.diets?.join(', ') || 'none'}]`
     );
-    console.log(
+    logger.debug(
       `LOG Recipe Selection: Recipe nutrition:`,
       selectedRecipe.nutrition
     );
@@ -745,7 +752,7 @@ class MealPlanningService {
     const snackRecipes = this.filterRecipesForMeal(recipes, 'snack', options);
     const selectedSnacks = [];
 
-    console.log(
+    logger.debug(
       `LOG Meal Planning: ${snackRecipes.length} snack recipes available`
     );
 
@@ -755,7 +762,7 @@ class MealPlanningService {
       const recipe = snackRecipes[i];
       // Ensure the selected snack hasn't been used for breakfast/lunch/dinner on the same day
       if (usedRecipes.has(recipe.id)) {
-        console.log(
+        logger.debug(
           `LOG Meal Planning: Selected snack "${recipe.title}" is a duplicate. Retrying.`
         );
         // Retry selection for this snack
@@ -776,11 +783,11 @@ class MealPlanningService {
             nutrition: retryRecipe.nutrition,
           });
           usedRecipes.add(retryRecipe.id); // Mark as used
-          console.log(
+          logger.debug(
             `LOG Meal Planning: Selected snack "${retryRecipe.title}" after retry`
           );
         } else {
-          console.log(
+          logger.debug(
             `LOG Meal Planning: No more snack recipes available after retry.`
           );
           // If no more snacks, just add a placeholder or skip
@@ -799,7 +806,7 @@ class MealPlanningService {
           nutrition: recipe.nutrition,
         });
         usedRecipes.add(recipe.id); // Mark as used
-        console.log(`LOG Meal Planning: Selected snack "${recipe.title}"`);
+        logger.debug(`LOG Meal Planning: Selected snack "${recipe.title}"`);
       }
     }
 
@@ -814,11 +821,11 @@ class MealPlanningService {
     mealType: string,
     _options: MealPlanningOptions
   ): Recipe[] {
-    console.log(`LOG Meal Type Filtering: Filtering recipes for ${mealType}`);
+    logger.debug(`LOG Meal Type Filtering: Filtering recipes for ${mealType}`);
 
     // For now, accept all recipes for any meal type to ensure variety
     // We can make this more sophisticated later with meal-specific keywords
-    console.log(
+    logger.debug(
       `LOG Meal Type Filtering: Accepting all recipes for ${mealType} (permissive mode)`
     );
     return recipes;
@@ -852,7 +859,7 @@ class MealPlanningService {
         isAppropriate = true;
     }
     
-    console.log(`LOG Meal Appropriateness: Recipe "${recipe.title}" is ${isAppropriate ? '' : 'NOT '}appropriate for ${mealType}`);
+    logger.debug(`LOG Meal Appropriateness: Recipe "${recipe.title}" is ${isAppropriate ? '' : 'NOT '}appropriate for ${mealType}`);
     
     return isAppropriate;
     */
@@ -867,7 +874,7 @@ class MealPlanningService {
   ): boolean {
     // For now, accept all recipes for any meal type to ensure variety
     // We can make this more sophisticated later
-    console.log(
+    logger.debug(
       `LOG Meal Appropriateness: Accepting "${recipe.title}" for ${mealType} (permissive mode)`
     );
     return true;
@@ -883,8 +890,8 @@ class MealPlanningService {
     const ingredients = recipe.ingredients.join(' ').toLowerCase();
     const searchText = `${title} ${ingredients}`;
     
-    console.log(`LOG Meal Appropriateness: Checking "${recipe.title}" for ${mealType}`);
-    console.log(`LOG Meal Appropriateness: Search text: ${searchText.substring(0, 100)}...`);
+    logger.debug(`LOG Meal Appropriateness: Checking "${recipe.title}" for ${mealType}`);
+    logger.debug(`LOG Meal Appropriateness: Search text: ${searchText.substring(0, 100)}...`);
     
     let isAppropriate = false;
     let matchedKeywords: string[] = [];
@@ -910,7 +917,7 @@ class MealPlanningService {
         isAppropriate = true;
     }
     
-    console.log(`LOG Meal Appropriateness: "${recipe.title}" for ${mealType} - Appropriate: ${isAppropriate}, Matched keywords: ${matchedKeywords.join(', ')}`);
+    logger.debug(`LOG Meal Appropriateness: "${recipe.title}" for ${mealType} - Appropriate: ${isAppropriate}, Matched keywords: ${matchedKeywords.join(', ')}`);
     
     return isAppropriate;
     */
@@ -956,7 +963,7 @@ class MealPlanningService {
       });
     });
 
-    console.log(
+    logger.debug(
       `LOG Meal Planning: Calculated total nutrition - Calories: ${totalCalories}, Protein: ${totalProtein}g, Carbs: ${totalCarbs}g, Fat: ${totalFat}g`
     );
 
@@ -1039,21 +1046,64 @@ class MealPlanningService {
    * Save meal plan to database
    */
   async saveMealPlan(mealPlan: MealPlan): Promise<void> {
-    // This would save to Supabase
-    // For now, we'll just log it
-    console.log('Saving meal plan:', mealPlan);
+    try {
+      const { error } = await supabaseService.supabase
+        .from('meal_plans')
+        .upsert(
+          {
+            id: mealPlan.id,
+            user_id: mealPlan.userId,
+            household_id: mealPlan.householdId ?? null,
+            week_start_date: mealPlan.weekStartDate,
+            meals: mealPlan.meals,
+            total_nutrition: mealPlan.totalNutrition ?? null,
+            created_at: mealPlan.createdAt,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        );
+      if (error) throw error;
+    } catch (error) {
+      logger.error('Error saving meal plan:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get meal plan for current week
+   * Get the most recent meal plan for the user (or household).
    */
   async getCurrentMealPlan(
-    _userId: string,
-    _householdId?: string
+    userId: string,
+    householdId?: string
   ): Promise<MealPlan | null> {
-    // This would fetch from Supabase
-    // For now, return null
-    return null;
+    try {
+      const query = supabaseService.supabase
+        .from('meal_plans')
+        .select('*')
+        .order('week_start_date', { ascending: false })
+        .limit(1);
+
+      const { data, error } = householdId
+        ? await query.or(`user_id.eq.${userId},household_id.eq.${householdId}`)
+        : await query.eq('user_id', userId);
+
+      if (error || !data || data.length === 0) return null;
+
+      const row = data[0];
+      return {
+        id: row.id,
+        userId: row.user_id,
+        householdId: row.household_id ?? undefined,
+        weekStartDate: row.week_start_date,
+        meals: row.meals,
+        totalNutrition: row.total_nutrition ?? undefined,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    } catch (error) {
+      logger.error('Error fetching meal plan:', error);
+      return null;
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 import { Recipe, MealPlan, PlannedMeal, DietaryPreferences } from '../types';
+import { logger } from '../utils/logger';
 import { recipeService } from './recipeService';
 
 export interface EnhancedMealPlanningOptions {
@@ -43,9 +44,9 @@ class EnhancedMealPlanningService {
     userId: string,
     householdId?: string
   ): Promise<MealPlanningResult> {
-    console.log('🍳 Enhanced Meal Planning: Starting generation');
-    console.log('🍳 Options:', options);
-    console.log('🍳 Available recipes:', recipes.length);
+    logger.debug('🍳 Enhanced Meal Planning: Starting generation');
+    logger.debug('🍳 Options:', options);
+    logger.debug('🍳 Available recipes:', recipes.length);
 
     const weekStartDate = new Date();
     const daysOfWeek = [
@@ -100,20 +101,20 @@ class EnhancedMealPlanningService {
     const relaxations: string[] = [];
     const warnings: string[] = [];
 
-    console.log(
+    logger.debug(
       `🍳 Tier ${tier}: Starting with ${availableRecipes.length} recipes`
     );
 
     switch (tier) {
       case 1: // Strict matching
-        console.log('🍳 Tier 1: Strict matching - all preferences enforced');
+        logger.debug('🍳 Tier 1: Strict matching - all preferences enforced');
         availableRecipes = this.filterByAllPreferences(
           recipes,
           options.dietaryPreferences
         );
         break;
       case 2: // Relaxed non-dietary
-        console.log('🍳 Tier 2: Relaxed non-dietary preferences');
+        logger.debug('🍳 Tier 2: Relaxed non-dietary preferences');
         availableRecipes = this.filterBySacredPreferences(
           recipes,
           options.dietaryPreferences
@@ -125,7 +126,7 @@ class EnhancedMealPlanningService {
         );
         break;
       case 3: // Minimal matching (only sacred)
-        console.log('🍳 Tier 3: Minimal matching - only sacred preferences');
+        logger.debug('🍳 Tier 3: Minimal matching - only sacred preferences');
         availableRecipes = this.filterBySacredPreferences(
           recipes,
           options.dietaryPreferences
@@ -136,7 +137,7 @@ class EnhancedMealPlanningService {
         );
         break;
       case 4: // User intervention needed
-        console.log('🍳 Tier 4: User intervention needed');
+        logger.debug('🍳 Tier 4: User intervention needed');
         availableRecipes = this.filterBySacredPreferences(
           recipes,
           options.dietaryPreferences
@@ -148,7 +149,7 @@ class EnhancedMealPlanningService {
         break;
     }
 
-    console.log(
+    logger.debug(
       `🍳 Tier ${tier}: After filtering, ${availableRecipes.length} recipes available`
     );
 
@@ -162,7 +163,7 @@ class EnhancedMealPlanningService {
       );
 
       if (this.isMealPlanComplete(mealPlan, options)) {
-        console.log(
+        logger.debug(
           `🍳 Tier ${tier}: Successfully generated complete meal plan`
         );
         return {
@@ -177,7 +178,7 @@ class EnhancedMealPlanningService {
 
     // If we don't have enough recipes, try to fetch more from Spoonacular
     if (tier <= 2 && availableRecipes.length < 7) {
-      console.log(
+      logger.debug(
         `🍳 Tier ${tier}: Fetching additional recipes from Spoonacular`
       );
       try {
@@ -192,7 +193,7 @@ class EnhancedMealPlanningService {
             nutritionGoals: options.dietaryPreferences.nutritionGoals,
           });
 
-        console.log(
+        logger.debug(
           `🍳 Tier ${tier}: Fetched ${additionalRecipes.length} additional recipes`
         );
 
@@ -209,7 +210,7 @@ class EnhancedMealPlanningService {
           );
 
           if (this.isMealPlanComplete(mealPlan, options)) {
-            console.log(
+            logger.debug(
               `🍳 Tier ${tier}: Successfully generated complete meal plan with Spoonacular recipes`
             );
             relaxations.push(
@@ -225,11 +226,11 @@ class EnhancedMealPlanningService {
           }
         }
       } catch (error) {
-        console.error('🍳 Error fetching additional recipes:', error);
+        logger.error('🍳 Error fetching additional recipes:', error);
       }
     }
 
-    console.log(`🍳 Tier ${tier}: Failed to generate complete meal plan`);
+    logger.debug(`🍳 Tier ${tier}: Failed to generate complete meal plan`);
     return {
       mealPlan: this.createMinimalMealPlan(daysOfWeek),
       tierUsed: tier,
@@ -246,7 +247,7 @@ class EnhancedMealPlanningService {
     recipes: Recipe[],
     preferences: DietaryPreferences
   ): Recipe[] {
-    console.log('🔍 FILTERING: All preferences (strict)');
+    logger.debug('🔍 FILTERING: All preferences (strict)');
 
     return recipes.filter(recipe => {
       // Check sacred preferences (diets, allergens, medical)
@@ -270,7 +271,7 @@ class EnhancedMealPlanningService {
     recipes: Recipe[],
     preferences: DietaryPreferences
   ): Recipe[] {
-    console.log('🔍 FILTERING: Sacred preferences only');
+    logger.debug('🔍 FILTERING: Sacred preferences only');
 
     return recipes.filter(recipe => {
       return this.matchesSacredPreferences(recipe, preferences);
@@ -301,7 +302,7 @@ class EnhancedMealPlanningService {
         recipeDiets.includes(diet)
       );
       if (!hasMatchingDiet) {
-        console.log(
+        logger.debug(
           `🔍 SACRED: Recipe "${recipe.title}" filtered out - diet mismatch`
         );
         return false;
@@ -315,7 +316,7 @@ class EnhancedMealPlanningService {
         recipeAllergens.includes(allergen)
       );
       if (hasAllergen) {
-        console.log(
+        logger.debug(
           `🔍 SACRED: Recipe "${recipe.title}" filtered out - contains allergen`
         );
         return false;
@@ -341,7 +342,7 @@ class EnhancedMealPlanningService {
             recipeIngredients.includes(keyword) || recipeTitle.includes(keyword)
         );
         if (hasHighSugar) {
-          console.log(
+          logger.debug(
             `🔍 SACRED: Recipe "${recipe.title}" filtered out - high sugar for diabetic`
           );
           return false;
@@ -355,7 +356,7 @@ class EnhancedMealPlanningService {
             recipeIngredients.includes(keyword) || recipeTitle.includes(keyword)
         );
         if (hasGluten) {
-          console.log(
+          logger.debug(
             `🔍 SACRED: Recipe "${recipe.title}" filtered out - contains gluten`
           );
           return false;
@@ -363,7 +364,7 @@ class EnhancedMealPlanningService {
       }
     }
 
-    console.log(`🔍 SACRED: Recipe "${recipe.title}" passed sacred filters`);
+    logger.debug(`🔍 SACRED: Recipe "${recipe.title}" passed sacred filters`);
     return true;
   }
 
@@ -381,7 +382,7 @@ class EnhancedMealPlanningService {
         recipeCuisines.includes(cuisine)
       );
       if (!hasMatchingCuisine) {
-        console.log(
+        logger.debug(
           `🔍 FLEXIBLE: Recipe "${recipe.title}" filtered out - cuisine mismatch`
         );
         return false;
@@ -402,7 +403,7 @@ class EnhancedMealPlanningService {
       const preferredDifficulty = preferences.difficulty;
 
       if (recipeDifficulty !== preferredDifficulty) {
-        console.log(
+        logger.debug(
           `🔍 FLEXIBLE: Recipe "${recipe.title}" filtered out - difficulty mismatch (${recipeDifficulty} vs ${preferredDifficulty})`
         );
         return false;
@@ -415,7 +416,7 @@ class EnhancedMealPlanningService {
       recipe.prepTime &&
       recipe.prepTime > preferences.maxPrepTime
     ) {
-      console.log(
+      logger.debug(
         `🔍 FLEXIBLE: Recipe "${recipe.title}" filtered out - prep time too long`
       );
       return false;
@@ -426,7 +427,7 @@ class EnhancedMealPlanningService {
       recipe.cookTime &&
       recipe.cookTime > preferences.maxCookTime
     ) {
-      console.log(
+      logger.debug(
         `🔍 FLEXIBLE: Recipe "${recipe.title}" filtered out - cook time too long`
       );
       return false;
@@ -438,7 +439,7 @@ class EnhancedMealPlanningService {
       const goals = preferences.nutritionGoals;
 
       if (goals.dailyCalories && nutrition.calories > goals.dailyCalories) {
-        console.log(
+        logger.debug(
           `🔍 FLEXIBLE: Recipe "${recipe.title}" filtered out - too many calories`
         );
         return false;
@@ -449,7 +450,7 @@ class EnhancedMealPlanningService {
         nutrition.fiber &&
         nutrition.fiber > goals.maxFiber
       ) {
-        console.log(
+        logger.debug(
           `🔍 FLEXIBLE: Recipe "${recipe.title}" filtered out - too much fiber`
         );
         return false;
@@ -460,7 +461,7 @@ class EnhancedMealPlanningService {
         nutrition.sugar &&
         nutrition.sugar > goals.maxSugar
       ) {
-        console.log(
+        logger.debug(
           `🔍 FLEXIBLE: Recipe "${recipe.title}" filtered out - too much sugar`
         );
         return false;
@@ -471,14 +472,14 @@ class EnhancedMealPlanningService {
         nutrition.sodium &&
         nutrition.sodium > goals.maxSodium
       ) {
-        console.log(
+        logger.debug(
           `🔍 FLEXIBLE: Recipe "${recipe.title}" filtered out - too much sodium`
         );
         return false;
       }
     }
 
-    console.log(
+    logger.debug(
       `🔍 FLEXIBLE: Recipe "${recipe.title}" passed flexible filters`
     );
     return true;
@@ -567,7 +568,7 @@ class EnhancedMealPlanningService {
 
     if (availableRecipes.length === 0) {
       // If all recipes used, allow reuse
-      console.log(
+      logger.debug(
         `🍽️ SELECTION: All recipes used for ${mealType}, allowing reuse`
       );
       return this.selectRandomRecipe(recipes, mealType, usedRecipes);
@@ -589,7 +590,7 @@ class EnhancedMealPlanningService {
     const selectedRecipe = recipes[Math.floor(Math.random() * recipes.length)];
     usedRecipes.add(selectedRecipe.id);
 
-    console.log(
+    logger.debug(
       `🍽️ SELECTION: Selected "${selectedRecipe.title}" for ${mealType}`
     );
 
@@ -730,7 +731,11 @@ class EnhancedMealPlanningService {
     const isComplete = daysWithMeals >= 5; // At least 5 days should have meals
 
     if (!isComplete) {
-      console.log('🍳 Meal plan incomplete:', daysWithMeals, 'days have meals');
+      logger.debug(
+        '🍳 Meal plan incomplete:',
+        daysWithMeals,
+        'days have meals'
+      );
       return false;
     }
 
@@ -741,7 +746,7 @@ class EnhancedMealPlanningService {
         day => mealPlan.meals[day].breakfast !== undefined
       )
     ) {
-      console.log('🍳 Meal plan missing breakfast');
+      logger.debug('🍳 Meal plan missing breakfast');
       return false;
     }
     if (
@@ -750,7 +755,7 @@ class EnhancedMealPlanningService {
         day => mealPlan.meals[day].lunch !== undefined
       )
     ) {
-      console.log('🍳 Meal plan missing lunch');
+      logger.debug('🍳 Meal plan missing lunch');
       return false;
     }
     if (
@@ -759,7 +764,7 @@ class EnhancedMealPlanningService {
         day => mealPlan.meals[day].dinner !== undefined
       )
     ) {
-      console.log('🍳 Meal plan missing dinner');
+      logger.debug('🍳 Meal plan missing dinner');
       return false;
     }
     if (
@@ -768,11 +773,11 @@ class EnhancedMealPlanningService {
         day => mealPlan.meals[day].snacks !== undefined
       )
     ) {
-      console.log('🍳 Meal plan missing snacks');
+      logger.debug('🍳 Meal plan missing snacks');
       return false;
     }
 
-    console.log('🍳 Meal plan is complete.');
+    logger.debug('🍳 Meal plan is complete.');
     return true;
   }
 
