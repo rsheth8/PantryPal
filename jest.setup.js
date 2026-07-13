@@ -42,7 +42,14 @@ jest.mock('expo-haptics', () => ({
   },
 }));
 jest.mock('expo-image-picker', () => ({
-  launchImageLibraryAsync: jest.fn(),
+  launchImageLibraryAsync: jest.fn(() => Promise.resolve({ canceled: true })),
+  launchCameraAsync: jest.fn(() => Promise.resolve({ canceled: true })),
+  requestCameraPermissionsAsync: jest.fn(() =>
+    Promise.resolve({ granted: true })
+  ),
+  requestMediaLibraryPermissionsAsync: jest.fn(() =>
+    Promise.resolve({ granted: true })
+  ),
   MediaTypeOptions: {
     Images: 'Images',
   },

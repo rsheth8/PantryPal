@@ -20,6 +20,7 @@ import { typography, spacing, borderRadius } from '../../utils/designSystem';
 import { haptics } from '../../utils/haptics';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import { barcodeService, ScannedProduct } from '../../services/barcodeService';
+import ReceiptScanModal from './ReceiptScanModal';
 
 const EXPIRY_PRESETS = [
   { label: 'None', days: null },
@@ -50,6 +51,7 @@ export default function ScannerScreen() {
   const [expiryDays, setExpiryDays] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [recentScans, setRecentScans] = useState<ScannedProduct[]>([]);
+  const [showReceipt, setShowReceipt] = useState(false);
   const scanLockRef = useRef(false);
 
   // Animated scan line
@@ -163,13 +165,26 @@ export default function ScannerScreen() {
         />
         <View style={styles.manualFallback}>
           <PantryButton
-            title='Add items manually instead'
+            title='Scan a receipt instead'
+            onPress={() => setShowReceipt(true)}
+            variant='primary'
+            size='md'
+            icon='🧾'
+            fullWidth
+          />
+          <PantryButton
+            title='Add items manually'
             onPress={() => navigation.navigate('Pantry')}
             variant='outline'
             size='md'
+            style={styles.fallbackSpacer}
             fullWidth
           />
         </View>
+        <ReceiptScanModal
+          visible={showReceipt}
+          onClose={() => setShowReceipt(false)}
+        />
       </View>
     );
   }
@@ -344,9 +359,24 @@ export default function ScannerScreen() {
                 the details for you. Works offline for items you scan again.
               </Text>
             )}
+            <View style={styles.receiptButton}>
+              <PantryButton
+                title='Scan a receipt instead'
+                onPress={() => setShowReceipt(true)}
+                variant='outline'
+                size='md'
+                icon='🧾'
+                fullWidth
+              />
+            </View>
           </PantryCard>
         )}
       </View>
+
+      <ReceiptScanModal
+        visible={showReceipt}
+        onClose={() => setShowReceipt(false)}
+      />
     </View>
   );
 }
@@ -428,6 +458,9 @@ const createStyles = (theme: Theme) =>
       flexWrap: 'wrap',
       marginLeft: spacing.sm,
     },
+    fallbackSpacer: {
+      marginTop: spacing.sm,
+    },
     manualFallback: {
       padding: spacing.lg,
     },
@@ -459,6 +492,9 @@ const createStyles = (theme: Theme) =>
       fontWeight: '700',
       minWidth: 28,
       textAlign: 'center',
+    },
+    receiptButton: {
+      marginTop: spacing.md,
     },
     recentRow: {
       ...typography.bodySmall,
