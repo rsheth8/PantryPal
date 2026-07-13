@@ -33,6 +33,19 @@ A modern, collaborative pantry management app built with React Native and Expo. 
 - Check if you can cook recipes with current ingredients
 - Missing ingredient detection
 - Recipe discovery and favorites
+- **Serving scaling** — rescale ingredient amounts to any number of servings
+- **Cooking mode** — full-screen, step-by-step guidance that keeps the screen
+  awake while you cook
+
+### 🔎 **Global Search**
+
+- One search box over your pantry, recipes, and shopping list
+- Ranked results with tap-to-jump navigation
+
+### ✨ **Instant Start**
+
+- One-tap sample pantry, recipes, and shopping list so the app is useful the
+  moment you open it — no empty screens
 
 ### 🛒 **Shopping List**
 
