@@ -216,7 +216,7 @@ class UserService {
 
   async getHouseholdActivity(
     householdId: string,
-    limit = 20
+    limit = 30
   ): Promise<HouseholdActivity[]> {
     try {
       const { data, error } = await supabaseService.supabase
@@ -231,7 +231,17 @@ class UserService {
         return [];
       }
 
-      return data || [];
+      // Map snake_case DB rows to the camelCase HouseholdActivity type.
+      return (data || []).map(row => ({
+        id: row.id,
+        householdId: row.household_id,
+        userId: row.user_id,
+        userName: row.user_name,
+        action: row.action,
+        itemName: row.item_name ?? undefined,
+        itemType: row.metadata?.itemType,
+        timestamp: row.timestamp,
+      }));
     } catch (error) {
       logger.error('Error in getHouseholdActivity:', error);
       return [];
@@ -242,15 +252,16 @@ class UserService {
     activity: Omit<HouseholdActivity, 'id' | 'timestamp'>
   ): Promise<void> {
     try {
-      const activityLog = {
-        ...activity,
+      await supabaseService.supabase.from('household_activity').insert({
         id: generateId(),
+        household_id: activity.householdId,
+        user_id: activity.userId,
+        user_name: activity.userName,
+        action: activity.action,
+        item_name: activity.itemName ?? null,
+        metadata: activity.itemType ? { itemType: activity.itemType } : null,
         timestamp: new Date().toISOString(),
-      };
-
-      await supabaseService.supabase
-        .from('household_activity')
-        .insert(activityLog);
+      });
     } catch (error) {
       logger.error('Error in addActivityLog:', error);
     }

@@ -284,6 +284,12 @@ export const useMultiUserStore = create<MultiUserStore>()(
               users,
               currentUser: updatedUser,
             });
+            userService.addActivityLog({
+              householdId: household.id,
+              userId: currentUser.id,
+              userName: currentUser.name,
+              action: 'joined',
+            });
             return true;
           }
           return false;
@@ -357,6 +363,18 @@ export const useMultiUserStore = create<MultiUserStore>()(
 
           // Track lifetime engagement counter for achievements.
           useEngagementStore.getState().incrementItemsAdded();
+
+          // Log to the household activity feed if shared.
+          if (isShared && currentHousehold) {
+            userService.addActivityLog({
+              householdId: currentHousehold.id,
+              userId: currentUser.id,
+              userName: currentUser.name,
+              action: 'added',
+              itemName: newItem.name,
+              itemType: 'pantry',
+            });
+          }
 
           // Schedule notifications for new items
           if (newItem.expirationDate) {
@@ -444,6 +462,14 @@ export const useMultiUserStore = create<MultiUserStore>()(
               'removed',
               itemToRemove.name
             );
+            userService.addActivityLog({
+              householdId: currentHousehold.id,
+              userId: currentUser.id,
+              userName: currentUser.name,
+              action: 'removed',
+              itemName: itemToRemove.name,
+              itemType: 'pantry',
+            });
           }
         } catch (error) {
           logger.error('Error removing grocery item:', error);
@@ -467,6 +493,14 @@ export const useMultiUserStore = create<MultiUserStore>()(
               'used',
               itemToMark.name
             );
+            userService.addActivityLog({
+              householdId: currentHousehold.id,
+              userId: currentUser.id,
+              userName: currentUser.name,
+              action: 'used',
+              itemName: itemToMark.name,
+              itemType: 'pantry',
+            });
           }
         } catch (error) {
           logger.error('Error marking item as used:', error);

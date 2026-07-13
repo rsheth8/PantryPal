@@ -237,6 +237,14 @@ export default function HouseholdScreen() {
                   fullWidth
                 />
                 <PantryButton
+                  title='View Activity'
+                  onPress={() => navigation.navigate('Activity')}
+                  variant='outline'
+                  size='md'
+                  icon='📊'
+                  fullWidth
+                />
+                <PantryButton
                   title='Leave Household'
                   onPress={handleLeaveHousehold}
                   variant='ghost'
