@@ -16,6 +16,7 @@ import { supabaseService } from '../services/supabaseService';
 import { notificationService } from '../services/notificationService';
 import { isDevMode } from '../config/dev';
 import { logger } from '../utils/logger';
+import { useEngagementStore } from './useEngagementStore';
 
 // Clear Zustand persisted storage in dev mode
 if (isDevMode()) {
@@ -354,6 +355,9 @@ export const useMultiUserStore = create<MultiUserStore>()(
 
           set(state => ({ pantry: [...state.pantry, newItem] }));
 
+          // Track lifetime engagement counter for achievements.
+          useEngagementStore.getState().incrementItemsAdded();
+
           // Schedule notifications for new items
           if (newItem.expirationDate) {
             await notificationService.scheduleExpirationNotification(newItem);
@@ -553,6 +557,10 @@ export const useMultiUserStore = create<MultiUserStore>()(
                   item.id === id ? updatedItem : item
                 ),
               }));
+              // Count each completion toward the "Smart Shopper" achievement.
+              useEngagementStore
+                .getState()
+                .incrementShoppingCompleted(updatedItem.isCompleted ? 1 : -1);
             }
           }
         } catch (error) {

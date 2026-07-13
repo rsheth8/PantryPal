@@ -17,6 +17,7 @@ import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { ToastProvider } from './src/components/ui';
 import { authService } from './src/services/authService';
 import { useMultiUserStore } from './src/store/useMultiUserStore';
+import { useEngagementStore } from './src/store/useEngagementStore';
 import { notificationService } from './src/services/notificationService';
 import { isDevMode } from './src/config/dev';
 import { logger } from './src/utils/logger';
@@ -45,6 +46,9 @@ function AppContent() {
           AsyncStorage.getItem(ONBOARDING_KEY),
         ]);
         setNeedsOnboarding(onboardingDone !== 'true');
+
+        // Record an active day for the streak achievement (idempotent per day).
+        useEngagementStore.getState().registerActiveDay();
 
         if (isDevMode()) {
           logger.debug('DEV MODE: Automatically authenticating');
