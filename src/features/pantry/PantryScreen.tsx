@@ -96,7 +96,24 @@ export default function PantryScreen() {
     removeGroceryItem,
     markItemAsUsed,
     refreshPantry,
+    seedSampleData,
   } = useMultiUserStore();
+  const [seeding, setSeeding] = useState(false);
+
+  const handleSeed = async () => {
+    setSeeding(true);
+    try {
+      await seedSampleData();
+      haptics.success();
+      showToast('Added a starter pantry — explore away! 🎉', {
+        type: 'success',
+      });
+    } catch {
+      showToast('Could not add sample items', { type: 'error' });
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -466,24 +483,33 @@ export default function PantryScreen() {
             />
           }
         />
-      ) : (
+      ) : searchQuery || selectedCategory ? (
         <EmptyState
           emoji='🥫'
-          title={
-            searchQuery || selectedCategory
-              ? 'No items found'
-              : 'Pantry is empty'
-          }
-          message={
-            searchQuery || selectedCategory
-              ? 'Try adjusting your search or filters.'
-              : 'Add your first item to start tracking freshness.'
-          }
-          actionLabel={
-            searchQuery || selectedCategory ? undefined : 'Add First Item'
-          }
-          onAction={openAddForm}
+          title='No items found'
+          message='Try adjusting your search or filters.'
         />
+      ) : (
+        <View>
+          <EmptyState
+            emoji='🥫'
+            title='Pantry is empty'
+            message='Add your first item to start tracking freshness — or start with a sample pantry to explore.'
+            actionLabel='Add First Item'
+            onAction={openAddForm}
+          />
+          <View style={styles.seedButton}>
+            <PantryButton
+              title='Fill with sample items'
+              onPress={handleSeed}
+              variant='outline'
+              size='md'
+              icon='✨'
+              loading={seeding}
+              fullWidth
+            />
+          </View>
+        </View>
       )}
 
       {/* Add / Edit Item Modal */}
@@ -900,6 +926,10 @@ const createStyles = (theme: Theme) =>
       fontSize: 16,
       height: 44,
       paddingHorizontal: spacing.md,
+    },
+    seedButton: {
+      marginTop: -spacing.lg,
+      paddingHorizontal: spacing.xl,
     },
     shareToggle: {
       alignItems: 'center',

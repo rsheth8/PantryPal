@@ -19,6 +19,11 @@ import { logger } from '../utils/logger';
 import { useEngagementStore } from './useEngagementStore';
 import { realtimeService, TableChange } from '../services/realtimeService';
 import {
+  samplePantry,
+  sampleRecipes,
+  sampleShopping,
+} from '../utils/sampleData';
+import {
   SupabaseGroceryItem,
   SupabaseShoppingListItem,
 } from '../services/supabaseService';
@@ -102,6 +107,9 @@ interface MultiUserStore {
 
   // Preferences
   updatePreferences: (updates: Partial<UserPreferences>) => void;
+
+  // First-run helper
+  seedSampleData: () => Promise<void>;
 
   // Computed getters
   getExpiringItems: () => GroceryItem[];
@@ -749,6 +757,21 @@ export const useMultiUserStore = create<MultiUserStore>()(
         set(state => ({
           preferences: { ...state.preferences, ...updates },
         }));
+      },
+
+      // Seed a realistic starter pantry, recipes, and shopping list. Used from
+      // empty states so a brand-new account isn't a blank slate.
+      seedSampleData: async () => {
+        const { addGroceryItem, addRecipe, addShoppingListItem } = get();
+        for (const item of samplePantry()) {
+          await addGroceryItem(item, item.isShared);
+        }
+        for (const recipe of sampleRecipes()) {
+          await addRecipe(recipe, recipe.isShared);
+        }
+        for (const item of sampleShopping()) {
+          await addShoppingListItem(item, item.isShared);
+        }
       },
 
       // Computed getters
