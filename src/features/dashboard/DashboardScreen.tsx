@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
@@ -19,6 +19,7 @@ import {
   shadows,
 } from '../../utils/designSystem';
 import { getDaysUntilExpiration, isExpiringSoon } from '../../utils/helpers';
+import SearchModal from '../search/SearchModal';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -35,6 +36,7 @@ export default function DashboardScreen() {
   const navigation = useNavigation<any>();
   const { pantry, recipes, shoppingList, currentUser, currentHousehold } =
     useMultiUserStore();
+  const [showSearch, setShowSearch] = useState(false);
 
   const stats = useMemo(() => {
     const active = pantry.filter(item => !item.isUsed);
@@ -157,6 +159,7 @@ export default function DashboardScreen() {
             : 'Everything in your pantry is fresh ✨'
         }
         gradient='garden'
+        rightAction={{ icon: '🔍', onPress: () => setShowSearch(true) }}
       />
 
       <ScrollView
@@ -346,6 +349,12 @@ export default function DashboardScreen() {
           </PantryCard>
         </FadeSlideIn>
       </ScrollView>
+
+      <SearchModal
+        visible={showSearch}
+        onClose={() => setShowSearch(false)}
+        onNavigate={goToTab}
+      />
     </View>
   );
 }
