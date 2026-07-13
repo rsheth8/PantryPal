@@ -17,6 +17,11 @@ import { notificationService } from '../services/notificationService';
 import { isDevMode } from '../config/dev';
 import { logger } from '../utils/logger';
 import { useEngagementStore } from './useEngagementStore';
+import { realtimeService, TableChange } from '../services/realtimeService';
+import {
+  SupabaseGroceryItem,
+  SupabaseShoppingListItem,
+} from '../services/supabaseService';
 
 // Clear Zustand persisted storage in dev mode
 if (isDevMode()) {
@@ -44,6 +49,8 @@ interface MultiUserStore {
   initializeUser: () => Promise<void>;
   setCurrentUser: (user: User) => void;
   setCurrentHousehold: (household: Household) => void;
+  startRealtimeSync: (householdId: string) => void;
+  stopRealtimeSync: () => void;
   createHousehold: (name: string) => Promise<Household>;
   joinHousehold: (code: string) => Promise<boolean>;
   leaveHousehold: () => Promise<void>;
@@ -238,6 +245,11 @@ export const useMultiUserStore = create<MultiUserStore>()(
             recipes,
             isLoading: false,
           });
+
+          // Start live sync for household members.
+          if (household) {
+            get().startRealtimeSync(household.id);
+          }
         } catch (error) {
           logger.error('Store: Error initializing user:', error);
           set({ error: 'Failed to initialize user', isLoading: false });
@@ -246,6 +258,66 @@ export const useMultiUserStore = create<MultiUserStore>()(
 
       setCurrentUser: (user: User) => {
         set({ currentUser: user });
+      },
+
+      // Subscribe to live household changes and reconcile them into local
+      // state. The current user's own writes are already applied optimistically,
+      // so we upsert by id (no duplicates) and ignore our own echoes.
+      startRealtimeSync: (householdId: string) => {
+        const applyChange = (change: TableChange) => {
+          if (change.table === 'grocery_items') {
+            const row = (change.new ??
+              change.old) as unknown as SupabaseGroceryItem;
+            if (!row) return;
+            if (change.type === 'DELETE') {
+              set(state => ({
+                pantry: state.pantry.filter(i => i.id !== row.id),
+              }));
+              return;
+            }
+            // Upsert by id — our own optimistic writes are deduped, remote
+            // members' changes are merged in live.
+            const item = supabaseService.mapGroceryRow(row);
+            set(state => {
+              const exists = state.pantry.some(i => i.id === item.id);
+              return exists
+                ? {
+                    pantry: state.pantry.map(i =>
+                      i.id === item.id ? item : i
+                    ),
+                  }
+                : { pantry: [...state.pantry, item] };
+            });
+          } else if (change.table === 'shopping_list_items') {
+            const row = (change.new ??
+              change.old) as unknown as SupabaseShoppingListItem;
+            if (!row) return;
+            if (change.type === 'DELETE') {
+              set(state => ({
+                shoppingList: state.shoppingList.filter(i => i.id !== row.id),
+              }));
+              return;
+            }
+            const item = supabaseService.mapShoppingRow(row);
+            set(state => {
+              const exists = state.shoppingList.some(i => i.id === item.id);
+              return exists
+                ? {
+                    shoppingList: state.shoppingList.map(i =>
+                      i.id === item.id ? item : i
+                    ),
+                  }
+                : { shoppingList: [...state.shoppingList, item] };
+            });
+          }
+          // recipes / household_activity are refreshed on their own screens.
+        };
+
+        realtimeService.subscribe(householdId, applyChange);
+      },
+
+      stopRealtimeSync: () => {
+        realtimeService.unsubscribe();
       },
 
       setCurrentHousehold: (household: Household) => {
@@ -263,6 +335,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
         if (!household) throw new Error('Failed to create household');
 
         set({ currentHousehold: household });
+        get().startRealtimeSync(household.id);
         return household;
       },
 
@@ -290,6 +363,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
               userName: currentUser.name,
               action: 'joined',
             });
+            get().startRealtimeSync(household.id);
             return true;
           }
           return false;
@@ -303,6 +377,7 @@ export const useMultiUserStore = create<MultiUserStore>()(
         const { currentUser } = get();
         if (!currentUser) return;
 
+        get().stopRealtimeSync();
         await userService.leaveHousehold(currentUser.id);
         set({ currentHousehold: null, users: [] });
       },

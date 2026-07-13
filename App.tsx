@@ -87,6 +87,7 @@ function AppContent() {
 
   const handleSignOut = useCallback(async () => {
     try {
+      useMultiUserStore.getState().stopRealtimeSync();
       await authService.signOut();
       setIsAuthenticated(false);
     } catch (error) {

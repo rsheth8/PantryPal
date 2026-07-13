@@ -666,6 +666,20 @@ class SupabaseService {
     );
   }
 
+  // Public row mappers (used by the realtime service to convert change
+  // payloads into app-shaped objects).
+  public mapGroceryRow(row: SupabaseGroceryItem): GroceryItem {
+    return this.convertSupabaseGroceryItemToGroceryItem(row);
+  }
+
+  public mapShoppingRow(row: SupabaseShoppingListItem): ShoppingListItem {
+    return this.convertSupabaseShoppingListItemToShoppingListItem(row);
+  }
+
+  public mapRecipeRow(row: SupabaseRecipe): Recipe {
+    return this.convertSupabaseRecipeToRecipe(row);
+  }
+
   // Conversion Methods
   public convertSupabaseUserToUser(supabaseUser: SupabaseUser): User {
     return {

@@ -379,3 +379,27 @@ CREATE POLICY "household_activity_access" ON household_activity
   FOR ALL USING (
     household_id IN (SELECT household_id FROM users WHERE id = auth.uid())
   );
+
+-- ============================================================
+-- Realtime: enable Postgres change streams for live household sync
+-- (safe to re-run; ignores already-added tables)
+-- ============================================================
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE grocery_items;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE shopping_list_items;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE recipes;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE household_activity;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
