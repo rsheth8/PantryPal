@@ -30,6 +30,11 @@ jest.mock('expo-web-browser', () => ({
 jest.mock('expo-crypto', () => ({
   digestStringAsync: jest.fn(),
 }));
+jest.mock('expo-keep-awake', () => ({
+  useKeepAwake: jest.fn(),
+  activateKeepAwakeAsync: jest.fn(),
+  deactivateKeepAwake: jest.fn(),
+}));
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(() => Promise.resolve()),
   notificationAsync: jest.fn(() => Promise.resolve()),

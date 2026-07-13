@@ -29,6 +29,8 @@ import { useThemedStyles, useTheme } from '../../theme/ThemeContext';
 import { typography, spacing, borderRadius } from '../../utils/designSystem';
 import { haptics } from '../../utils/haptics';
 import { recipeService } from '../../services/recipeService';
+import { scaleIngredients } from '../../utils/recipeScaling';
+import CookingModeModal from './CookingModeModal';
 import { Recipe } from '../../types';
 
 // Live ingredient availability against the current pantry.
@@ -87,6 +89,8 @@ export default function RecipesScreen() {
     'all' | 'canCook' | 'favorites'
   >('all');
   const [detailRecipe, setDetailRecipe] = useState<Recipe | null>(null);
+  const [detailServings, setDetailServings] = useState(4);
+  const [cooking, setCooking] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState<RecipeFormState>(emptyRecipeForm);
   const [saving, setSaving] = useState(false);
@@ -132,6 +136,13 @@ export default function RecipesScreen() {
 
   const canCookCount = enriched.filter(e => e.availability.canCook).length;
   const favoriteCount = recipes.filter(r => r.isFavorite).length;
+
+  const openDetail = (recipe: Recipe) => {
+    setDetailServings(
+      recipe.servings && recipe.servings > 0 ? recipe.servings : 4
+    );
+    setDetailRecipe(recipe);
+  };
 
   const handleToggleFavorite = (recipe: Recipe) => {
     haptics.light();
@@ -281,7 +292,7 @@ export default function RecipesScreen() {
     const { recipe, availability } = item;
     return (
       <FadeSlideIn delay={Math.min(index, 8) * 50}>
-        <AnimatedPressable onPress={() => setDetailRecipe(recipe)}>
+        <AnimatedPressable onPress={() => openDetail(recipe)}>
           <PantryCard variant='default' padding='md'>
             <View style={styles.recipeHeader}>
               <View style={styles.recipeInfo}>
@@ -362,6 +373,14 @@ export default function RecipesScreen() {
   const detailAvailability = detailRecipe
     ? getAvailability(detailRecipe, pantryNames)
     : null;
+
+  const baseServings =
+    detailRecipe?.servings && detailRecipe.servings > 0
+      ? detailRecipe.servings
+      : 4;
+  const scaledIngredients = detailRecipe
+    ? scaleIngredients(detailRecipe.ingredients, baseServings, detailServings)
+    : [];
 
   return (
     <View style={styles.container}>
@@ -516,9 +535,38 @@ export default function RecipesScreen() {
                 )}
               </View>
 
-              <Text style={styles.detailSectionTitle}>🧺 Ingredients</Text>
-              {detailRecipe.ingredients.map((ingredient, i) => {
-                const has = detailAvailability?.have.includes(ingredient);
+              <View style={styles.ingredientsHeader}>
+                <Text style={styles.detailSectionTitle}>🧺 Ingredients</Text>
+                <View style={styles.servingsStepper}>
+                  <TouchableOpacity
+                    style={styles.servingsButton}
+                    onPress={() => {
+                      haptics.selection();
+                      setDetailServings(s => Math.max(1, s - 1));
+                    }}
+                    accessibilityLabel='Fewer servings'
+                  >
+                    <Text style={styles.servingsButtonText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.servingsValue}>
+                    {detailServings} serv
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.servingsButton}
+                    onPress={() => {
+                      haptics.selection();
+                      setDetailServings(s => Math.min(24, s + 1));
+                    }}
+                    accessibilityLabel='More servings'
+                  >
+                    <Text style={styles.servingsButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              {scaledIngredients.map((ingredient, i) => {
+                const has = detailAvailability?.have.includes(
+                  detailRecipe.ingredients[i]
+                );
                 return (
                   <View key={i} style={styles.ingredientRow}>
                     <Text style={styles.ingredientMark}>
@@ -551,6 +599,19 @@ export default function RecipesScreen() {
               )}
 
               <View style={styles.detailActions}>
+                {detailRecipe.instructions.length > 0 && (
+                  <PantryButton
+                    title='Start Cooking'
+                    onPress={() => {
+                      haptics.medium();
+                      setCooking(true);
+                    }}
+                    variant='primary'
+                    size='lg'
+                    icon='👨‍🍳'
+                    fullWidth
+                  />
+                )}
                 {!detailAvailability?.canCook && (
                   <PantryButton
                     title='Add missing to shopping list'
@@ -573,6 +634,13 @@ export default function RecipesScreen() {
           </View>
         )}
       </Modal>
+
+      <CookingModeModal
+        visible={cooking}
+        recipe={detailRecipe}
+        ingredients={scaledIngredients}
+        onClose={() => setCooking(false)}
+      />
 
       {/* Add recipe modal */}
       <Modal
@@ -904,6 +972,11 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.textSecondary,
       flex: 1,
     },
+    ingredientsHeader: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
     listContent: {
       paddingBottom: spacing.xxl,
     },
@@ -961,6 +1034,32 @@ const createStyles = (theme: Theme) =>
       alignItems: 'center',
       flexDirection: 'row',
       gap: spacing.sm,
+    },
+    servingsButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 34,
+      width: 34,
+    },
+    servingsButtonText: {
+      color: theme.colors.textSecondary,
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    servingsStepper: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.backgroundSubtle,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.pill,
+      borderWidth: 1,
+      flexDirection: 'row',
+    },
+    servingsValue: {
+      ...typography.caption,
+      color: theme.colors.primary,
+      fontWeight: '700',
+      minWidth: 48,
+      textAlign: 'center',
     },
     skeletonCard: {
       backgroundColor: theme.colors.surface,
