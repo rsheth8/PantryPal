@@ -138,6 +138,12 @@ export default function DashboardScreen() {
       color: theme.palette.lavender[500],
       onPress: () => goToScreen('Household'),
     },
+    {
+      title: 'Awards',
+      icon: '🏆',
+      color: theme.palette.citrus[500],
+      onPress: () => goToScreen('Achievements'),
+    },
   ];
 
   return (

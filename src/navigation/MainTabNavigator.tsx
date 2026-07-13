@@ -13,6 +13,7 @@ import SettingsScreen from '../features/settings/SettingsScreen';
 import MealPlanningScreen from '../features/mealPlanning/MealPlanningScreen';
 import HouseholdScreen from '../features/household/HouseholdScreen';
 import AnalyticsScreen from '../features/analytics/AnalyticsScreen';
+import AchievementsScreen from '../features/achievements/AchievementsScreen';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createStackNavigator();
@@ -26,6 +27,7 @@ function HomeStackNavigator() {
       <HomeStack.Screen name='MealPlanning' component={MealPlanningScreen} />
       <HomeStack.Screen name='Household' component={HouseholdScreen} />
       <HomeStack.Screen name='Analytics' component={AnalyticsScreen} />
+      <HomeStack.Screen name='Achievements' component={AchievementsScreen} />
     </HomeStack.Navigator>
   );
 }

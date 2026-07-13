@@ -48,6 +48,26 @@ jest.mock('expo-image-picker', () => ({
   },
 }));
 
+// react-native-svg renders fine under jest via its mock
+jest.mock('react-native-svg', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const Mock = ({ children, ...props }) =>
+    React.createElement(View, props, children);
+  return {
+    __esModule: true,
+    default: Mock,
+    Svg: Mock,
+    Circle: Mock,
+    Path: Mock,
+    G: Mock,
+    Rect: Mock,
+    Defs: Mock,
+    LinearGradient: Mock,
+    Stop: Mock,
+  };
+});
+
 // Mock React Navigation
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
