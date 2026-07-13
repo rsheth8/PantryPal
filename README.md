@@ -6,10 +6,18 @@ A modern, collaborative pantry management app built with React Native and Expo. 
 
 ### 🏠 **Household Management**
 
-- Create and join households with unique codes
+- Create and join households with unique invite codes
 - Manage multiple family members or roommates
 - Shared and private item visibility
-- Real-time collaboration
+- **Real-time sync** — members see live pantry & shopping updates instantly
+  (Supabase realtime channels, no refresh needed)
+- **Activity feed** — a shared timeline of who added, used, or removed what
+
+### 🏆 **Achievements & Streaks**
+
+- Tiered badges across pantry, waste-reduction, recipes, shopping & social
+- Daily-use streaks to build a habit
+- Animated progress rings and unlock celebrations
 
 ### 🥫 **Smart Pantry Management**
 
@@ -39,6 +47,8 @@ A modern, collaborative pantry management app built with React Native and Expo. 
 - Automatic product lookup via the free [Open Food Facts](https://world.openfoodfacts.org/)
   database — **no API key required**, works out of the box
 - Prefills product name, brand, and category; pick quantity + expiry and add
+- **Receipt scanning** — snap a grocery receipt to bulk-add your whole shop
+  (editable review list before saving)
 - Manual item entry with smart auto-categorization
 
 ### 🍳 **Meal Planning**
