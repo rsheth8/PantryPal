@@ -2,6 +2,10 @@
 
 A modern, collaborative pantry management app built with React Native and Expo. PantryPal helps families and roommates track groceries, plan meals, and reduce food waste together.
 
+> 📋 **Picking up development or getting ready to launch?** Start with
+> [`docs/HANDOFF.md`](docs/HANDOFF.md) — current status, architecture map, and the
+> go-live checklist for adding API keys.
+
 ## ✨ Features
 
 ### 🏠 **Household Management**
