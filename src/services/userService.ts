@@ -1,4 +1,5 @@
 import { User, Household } from '../types';
+import { logger } from '../utils/logger';
 import { supabaseService } from './supabaseService';
 import { generateId } from '../utils/helpers';
 
@@ -65,13 +66,13 @@ class UserService {
         .single();
 
       if (error) {
-        console.error('Error fetching user:', error);
+        logger.error('Error fetching user:', error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in getUserById:', error);
+      logger.error('Error in getUserById:', error);
       return null;
     }
   }
@@ -81,55 +82,29 @@ class UserService {
     name: string
   ): Promise<Household | null> {
     try {
-      const code = this.generateHouseholdCode();
-      const household = {
-        id: generateId(),
-        name,
-        code,
-        ownerId: userId,
-        createdAt: new Date().toISOString(),
-      };
-
-      const { data, error } = await supabaseService.supabase
-        .from('households')
-        .insert(household)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating household:', error);
-        return null;
-      }
-
-      // Add user to household
-      await this.addMemberToHousehold(userId, data.id, 'owner');
-
-      return data;
+      // Delegate to supabaseService, which builds the record with the correct
+      // snake_case columns (owner_id, members, settings, created_at) and also
+      // sets the owner's household_id.
+      const household = await supabaseService.createHousehold(name, userId);
+      // Best-effort role bookkeeping (non-fatal if the table is absent).
+      await this.addMemberToHousehold(userId, household.id, 'owner');
+      return household;
     } catch (error) {
-      console.error('Error in createHousehold:', error);
+      logger.error('Error in createHousehold:', error);
       return null;
     }
   }
 
   async joinHousehold(userId: string, code: string): Promise<Household | null> {
     try {
-      const { data: household, error } = await supabaseService.supabase
-        .from('households')
-        .select('*')
-        .eq('code', code)
-        .single();
-
-      if (error || !household) {
-        console.error('Error finding household:', error);
-        return null;
-      }
-
-      // Add user to household
+      // Delegate to supabaseService, which appends to the members array and
+      // sets the joiner's household_id.
+      const household = await supabaseService.joinHousehold(userId, code);
+      if (!household) return null;
       await this.addMemberToHousehold(userId, household.id, 'member');
-
       return household;
     } catch (error) {
-      console.error('Error in joinHousehold:', error);
+      logger.error('Error in joinHousehold:', error);
       return null;
     }
   }
@@ -148,7 +123,7 @@ class UserService {
         .delete()
         .eq('user_id', userId);
     } catch (error) {
-      console.error('Error in leaveHousehold:', error);
+      logger.error('Error in leaveHousehold:', error);
     }
   }
 
@@ -160,13 +135,13 @@ class UserService {
         .eq('household_id', householdId);
 
       if (error) {
-        console.error('Error fetching household members:', error);
+        logger.error('Error fetching household members:', error);
         return [];
       }
 
       return data || [];
     } catch (error) {
-      console.error('Error in getHouseholdMembers:', error);
+      logger.error('Error in getHouseholdMembers:', error);
       return [];
     }
   }
@@ -198,13 +173,13 @@ class UserService {
         .single();
 
       if (error) {
-        console.error('Error creating invite:', error);
+        logger.error('Error creating invite:', error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in createInvite:', error);
+      logger.error('Error in createInvite:', error);
       return null;
     }
   }
@@ -219,7 +194,7 @@ class UserService {
         .single();
 
       if (error || !invite) {
-        console.error('Error finding invite:', error);
+        logger.error('Error finding invite:', error);
         return false;
       }
 
@@ -234,14 +209,14 @@ class UserService {
 
       return true;
     } catch (error) {
-      console.error('Error in acceptInvite:', error);
+      logger.error('Error in acceptInvite:', error);
       return false;
     }
   }
 
   async getHouseholdActivity(
     householdId: string,
-    limit = 20
+    limit = 30
   ): Promise<HouseholdActivity[]> {
     try {
       const { data, error } = await supabaseService.supabase
@@ -252,13 +227,23 @@ class UserService {
         .limit(limit);
 
       if (error) {
-        console.error('Error fetching household activity:', error);
+        logger.error('Error fetching household activity:', error);
         return [];
       }
 
-      return data || [];
+      // Map snake_case DB rows to the camelCase HouseholdActivity type.
+      return (data || []).map(row => ({
+        id: row.id,
+        householdId: row.household_id,
+        userId: row.user_id,
+        userName: row.user_name,
+        action: row.action,
+        itemName: row.item_name ?? undefined,
+        itemType: row.metadata?.itemType,
+        timestamp: row.timestamp,
+      }));
     } catch (error) {
-      console.error('Error in getHouseholdActivity:', error);
+      logger.error('Error in getHouseholdActivity:', error);
       return [];
     }
   }
@@ -267,17 +252,18 @@ class UserService {
     activity: Omit<HouseholdActivity, 'id' | 'timestamp'>
   ): Promise<void> {
     try {
-      const activityLog = {
-        ...activity,
+      await supabaseService.supabase.from('household_activity').insert({
         id: generateId(),
+        household_id: activity.householdId,
+        user_id: activity.userId,
+        user_name: activity.userName,
+        action: activity.action,
+        item_name: activity.itemName ?? null,
+        metadata: activity.itemType ? { itemType: activity.itemType } : null,
         timestamp: new Date().toISOString(),
-      };
-
-      await supabaseService.supabase
-        .from('household_activity')
-        .insert(activityLog);
+      });
     } catch (error) {
-      console.error('Error in addActivityLog:', error);
+      logger.error('Error in addActivityLog:', error);
     }
   }
 
@@ -294,13 +280,13 @@ class UserService {
         .single();
 
       if (error) {
-        console.error('Error fetching member role:', error);
+        logger.error('Error fetching member role:', error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in getMemberRole:', error);
+      logger.error('Error in getMemberRole:', error);
       return null;
     }
   }
@@ -317,7 +303,7 @@ class UserService {
         .eq('user_id', userId)
         .eq('household_id', householdId);
     } catch (error) {
-      console.error('Error in updateMemberRole:', error);
+      logger.error('Error in updateMemberRole:', error);
     }
   }
 
@@ -336,7 +322,7 @@ class UserService {
         .update({ household_id: null })
         .eq('id', userId);
     } catch (error) {
-      console.error('Error in removeMember:', error);
+      logger.error('Error in removeMember:', error);
     }
   }
 
@@ -353,13 +339,13 @@ class UserService {
         .single();
 
       if (error) {
-        console.error('Error updating household settings:', error);
+        logger.error('Error updating household settings:', error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error in updateHouseholdSettings:', error);
+      logger.error('Error in updateHouseholdSettings:', error);
       return null;
     }
   }
@@ -384,13 +370,13 @@ class UserService {
         joined_at: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('Error in addMemberToHousehold:', error);
+      logger.error('Error in addMemberToHousehold:', error);
     }
   }
 
   async getHouseholdById(householdId: string): Promise<Household | null> {
     try {
-      console.log('UserService: Fetching household with ID:', householdId);
+      logger.debug('UserService: Fetching household with ID:', householdId);
       const { data, error } = await supabaseService.supabase
         .from('households')
         .select('*')
@@ -398,14 +384,14 @@ class UserService {
         .single();
 
       if (error) {
-        console.error('UserService: Error fetching household:', error);
+        logger.error('UserService: Error fetching household:', error);
         return null;
       }
 
-      console.log('UserService: Found household:', data);
+      logger.debug('UserService: Found household:', data);
       return data;
     } catch (error) {
-      console.error('UserService: Error in getHouseholdById:', error);
+      logger.error('UserService: Error in getHouseholdById:', error);
       return null;
     }
   }

@@ -5,12 +5,16 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { authService } from '../../services/authService';
+import PantryButton from '../../components/PantryButton';
+import { AmbientBackground, FadeSlideIn, useToast } from '../../components/ui';
+import { Theme } from '../../theme/themes';
+import { useThemedStyles, useTheme } from '../../theme/ThemeContext';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -21,13 +25,16 @@ export default function LoginScreen({
   onLoginSuccess,
   onSwitchToSignUp,
 }: LoginScreenProps) {
+  const styles = useThemedStyles(createStyles);
+  const { theme } = useTheme();
+  const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleEmailLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both email and password.');
+      showToast('Please enter both email and password', { type: 'warning' });
       return;
     }
 
@@ -37,87 +44,88 @@ export default function LoginScreen({
       if (user) {
         onLoginSuccess();
       } else {
-        Alert.alert('Error', 'Invalid email or password.');
+        showToast('Invalid email or password', { type: 'error' });
       }
-    } catch (error) {
-      Alert.alert('Error', 'Login failed. Please try again.');
+    } catch {
+      showToast('Login failed — check your connection and try again', {
+        type: 'error',
+      });
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Google sign-in removed - use email/password only
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Welcome to PantryPal</Text>
-          <Text style={styles.subtitle}>
-            Sign in to manage your household pantry
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          <TextInput
-            style={styles.input}
-            placeholder='Email'
-            value={email}
-            onChangeText={setEmail}
-            keyboardType='email-address'
-            autoCapitalize='none'
-            autoCorrect={false}
-            editable={!isLoading}
-            secureTextEntry={false}
-            autoComplete='email'
-            textContentType='emailAddress'
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder='Password'
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={true}
-            autoCapitalize='none'
-            autoCorrect={false}
-            editable={!isLoading}
-            autoComplete='password'
-            textContentType='password'
-          />
-
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton]}
-            onPress={handleEmailLogin}
-            disabled={isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? 'Signing In...' : 'Sign In'}
+      <AmbientBackground variant='primary' />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps='handled'
+      >
+        <FadeSlideIn offsetY={26}>
+          <View style={styles.header}>
+            <Text style={styles.logo}>🥫</Text>
+            <Text style={styles.title}>PantryPal</Text>
+            <Text style={styles.subtitle}>
+              Track groceries. Waste less. Cook more.
             </Text>
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
           </View>
+        </FadeSlideIn>
 
-          {/* Google sign-in removed - use email/password only */}
+        <FadeSlideIn delay={150} offsetY={26}>
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder='Email'
+              placeholderTextColor={theme.colors.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType='email-address'
+              autoCapitalize='none'
+              autoCorrect={false}
+              editable={!isLoading}
+              autoComplete='email'
+              textContentType='emailAddress'
+            />
 
-          <TouchableOpacity
-            style={styles.switchButton}
-            onPress={onSwitchToSignUp}
-            disabled={isLoading}
-          >
-            <Text style={styles.switchText}>
-              Don&apos;t have an account?{' '}
-              <Text style={styles.switchTextBold}>Sign Up</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
+            <TextInput
+              style={styles.input}
+              placeholder='Password'
+              placeholderTextColor={theme.colors.textMuted}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize='none'
+              autoCorrect={false}
+              editable={!isLoading}
+              autoComplete='password'
+              textContentType='password'
+            />
+
+            <PantryButton
+              title='Sign In'
+              onPress={handleEmailLogin}
+              variant='primary'
+              size='lg'
+              loading={isLoading}
+              fullWidth
+            />
+
+            <TouchableOpacity
+              style={styles.switchButton}
+              onPress={onSwitchToSignUp}
+              disabled={isLoading}
+            >
+              <Text style={styles.switchText}>
+                Don&apos;t have an account?{' '}
+                <Text style={styles.switchTextBold}>Sign Up</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </FadeSlideIn>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
@@ -129,92 +137,68 @@ export default function LoginScreen({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    alignItems: 'center',
-    borderRadius: 8,
-    marginBottom: 16,
-    paddingVertical: 16,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  container: {
-    backgroundColor: '#fff',
-    flex: 1,
-  },
-  divider: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    marginVertical: 20,
-  },
-  dividerLine: {
-    backgroundColor: '#e0e0e0',
-    flex: 1,
-    height: 1,
-  },
-  dividerText: {
-    color: '#666',
-    fontSize: 14,
-    marginHorizontal: 16,
-  },
-  footer: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  footerText: {
-    color: '#999',
-    fontSize: 12,
-    lineHeight: 16,
-    textAlign: 'center',
-  },
-  form: {
-    marginBottom: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    borderWidth: 1,
-    fontSize: 16,
-    marginBottom: 16,
-    padding: 16,
-  },
-  primaryButton: {
-    backgroundColor: '#4CAF50',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  subtitle: {
-    color: '#666',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  switchButton: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  switchText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  switchTextBold: {
-    color: '#4CAF50',
-    fontWeight: '600',
-  },
-  title: {
-    color: '#333',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: theme.colors.background,
+      flex: 1,
+    },
+    footer: {
+      alignItems: 'center',
+      marginTop: spacing.lg,
+    },
+    footerText: {
+      ...typography.caption,
+      color: theme.colors.textMuted,
+      lineHeight: 16,
+      textAlign: 'center',
+    },
+    form: {
+      marginBottom: spacing.md,
+    },
+    header: {
+      alignItems: 'center',
+      marginBottom: spacing.xl,
+    },
+    input: {
+      backgroundColor: theme.colors.inputBackground,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.input,
+      borderWidth: 1,
+      color: theme.colors.text,
+      fontSize: 16,
+      marginBottom: spacing.md,
+      padding: spacing.md,
+    },
+    logo: {
+      fontSize: 64,
+      marginBottom: spacing.sm,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      padding: spacing.lg,
+    },
+    subtitle: {
+      ...typography.body,
+      color: theme.colors.textMuted,
+      textAlign: 'center',
+    },
+    switchButton: {
+      alignItems: 'center',
+      marginTop: spacing.lg,
+    },
+    switchText: {
+      ...typography.bodySmall,
+      color: theme.colors.textMuted,
+    },
+    switchTextBold: {
+      color: theme.colors.primary,
+      fontWeight: '600',
+    },
+    title: {
+      ...typography.display,
+      color: theme.colors.text,
+      marginBottom: spacing.xs,
+    },
+  });

@@ -1,336 +1,524 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import {
-  colors,
+  AnimatedPressable,
+  FadeSlideIn,
+  AmbientBackground,
+} from '../../components/ui';
+import { Theme } from '../../theme/themes';
+import { useThemedStyles, useTheme } from '../../theme/ThemeContext';
+import {
   typography,
   spacing,
   borderRadius,
   shadows,
 } from '../../utils/designSystem';
+import { getDaysUntilExpiration, isExpiringSoon } from '../../utils/helpers';
+import SearchModal from '../search/SearchModal';
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 5) return 'Up late';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default function DashboardScreen() {
+  const styles = useThemedStyles(createStyles);
+  const { theme } = useTheme();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const navigation = useNavigation<any>();
   const { pantry, recipes, shoppingList, currentUser, currentHousehold } =
     useMultiUserStore();
-  const [stats, setStats] = useState({
-    totalItems: 0,
-    expiringSoon: 0,
-    lowStock: 0,
-    totalRecipes: 0,
-    canCookNow: 0,
-    shoppingItems: 0,
-  });
+  const [showSearch, setShowSearch] = useState(false);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      calculateStats();
-    }, [pantry, recipes, shoppingList])
-  );
-
-  const calculateStats = () => {
-    const now = new Date();
-    const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-
-    const expiringSoon = pantry.filter(item => {
-      const expirationDate = new Date(item.expirationDate);
-      return expirationDate <= threeDaysFromNow && !item.isExpired;
-    }).length;
-
-    const lowStock = pantry.filter(
-      item => item.quantity <= 1 && !item.isExpired
-    ).length;
-    const canCookNow = recipes.filter(recipe => recipe.canCookNow).length;
-
-    setStats({
-      totalItems: pantry.length,
-      expiringSoon,
-      lowStock,
+  const stats = useMemo(() => {
+    const active = pantry.filter(item => !item.isUsed);
+    const expiring = active.filter(item => isExpiringSoon(item));
+    return {
+      totalItems: active.length,
+      expiringSoon: expiring.length,
+      lowStock: active.filter(item => item.quantity <= 1 && !item.isExpired)
+        .length,
       totalRecipes: recipes.length,
-      canCookNow,
-      shoppingItems: shoppingList.length,
-    });
-  };
+      canCookNow: recipes.filter(recipe => recipe.canCookNow).length,
+      shoppingItems: shoppingList.filter(item => !item.isCompleted).length,
+      expiringPreview: expiring
+        .slice()
+        .sort(
+          (a, b) =>
+            getDaysUntilExpiration(a.expirationDate) -
+            getDaysUntilExpiration(b.expirationDate)
+        )
+        .slice(0, 3),
+      recentItems: pantry
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, 3),
+    };
+  }, [pantry, recipes, shoppingList]);
 
-  const renderStatCard = (
-    title: string,
-    value: number,
-    icon: string,
-    color: string,
-    onPress?: () => void
-  ) => (
-    <TouchableOpacity
-      style={styles.statCard}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <View
-        style={[styles.statIconContainer, { backgroundColor: `${color}20` }]}
-      >
-        <Text style={styles.statIcon}>{icon}</Text>
-      </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </TouchableOpacity>
-  );
+  const goToTab = (tab: string) => navigation.navigate(tab);
+  const goToScreen = (screen: string) => navigation.navigate(screen);
 
-  const renderQuickAction = (
-    title: string,
-    icon: string,
-    color: string,
-    onPress: () => void
-  ) => (
-    <TouchableOpacity
-      style={styles.quickActionCard}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <View
-        style={[styles.actionIconContainer, { backgroundColor: `${color}20` }]}
-      >
-        <Text style={styles.actionIcon}>{icon}</Text>
-      </View>
-      <Text style={styles.actionTitle}>{title}</Text>
-    </TouchableOpacity>
-  );
+  const statCards = [
+    {
+      title: 'Pantry Items',
+      value: stats.totalItems,
+      icon: '🥫',
+      color: theme.palette.primary[500],
+      onPress: () => goToTab('Pantry'),
+    },
+    {
+      title: 'Expiring Soon',
+      value: stats.expiringSoon,
+      icon: '⏰',
+      color: theme.colors.warning,
+      onPress: () => goToTab('Pantry'),
+    },
+    {
+      title: 'Low Stock',
+      value: stats.lowStock,
+      icon: '📉',
+      color: theme.palette.citrus[500],
+      onPress: () => goToTab('Shopping'),
+    },
+    {
+      title: 'Recipes',
+      value: stats.totalRecipes,
+      icon: '📖',
+      color: theme.palette.secondary[500],
+      onPress: () => goToTab('Recipes'),
+    },
+    {
+      title: 'Can Cook Now',
+      value: stats.canCookNow,
+      icon: '🍳',
+      color: theme.colors.success,
+      onPress: () => goToTab('Recipes'),
+    },
+    {
+      title: 'To Buy',
+      value: stats.shoppingItems,
+      icon: '🛒',
+      color: theme.palette.accent[500],
+      onPress: () => goToTab('Shopping'),
+    },
+  ];
+
+  const quickActions = [
+    {
+      title: 'Scan Item',
+      icon: '📷',
+      color: theme.palette.accent[500],
+      onPress: () => goToTab('Scanner'),
+    },
+    {
+      title: 'Meal Plan',
+      icon: '🍽️',
+      color: theme.palette.secondary[500],
+      onPress: () => goToScreen('MealPlanning'),
+    },
+    {
+      title: 'Analytics',
+      icon: '📈',
+      color: theme.palette.sage[500],
+      onPress: () => goToScreen('Analytics'),
+    },
+    {
+      title: 'Household',
+      icon: '🏠',
+      color: theme.palette.lavender[500],
+      onPress: () => goToScreen('Household'),
+    },
+    {
+      title: 'Awards',
+      icon: '🏆',
+      color: theme.palette.citrus[500],
+      onPress: () => goToScreen('Achievements'),
+    },
+  ];
 
   return (
     <View style={styles.container}>
+      <AmbientBackground variant='primary' />
       <PantryHeader
-        title='Dashboard'
-        subtitle={`Welcome back, ${currentUser?.name || 'User'}! 👋`}
+        title={`${getGreeting()}, ${currentUser?.name?.split(' ')[0] || 'Chef'}!`}
+        subtitle={
+          stats.expiringSoon > 0
+            ? `${stats.expiringSoon} item${stats.expiringSoon === 1 ? '' : 's'} expiring soon — let's use ${stats.expiringSoon === 1 ? 'it' : 'them'}! 🧑‍🍳`
+            : 'Everything in your pantry is fresh ✨'
+        }
         gradient='garden'
+        rightAction={{ icon: '🔍', onPress: () => setShowSearch(true) }}
       />
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Stats Grid */}
-        <PantryCard variant='elevated' padding='lg'>
-          <Text style={styles.sectionTitle}>📊 Quick Stats</Text>
-          <View style={styles.statsGrid}>
-            {renderStatCard(
-              'Total Items',
-              stats.totalItems,
-              '🥫',
-              colors.primary[500]
-            )}
-            {renderStatCard(
-              'Expiring Soon',
-              stats.expiringSoon,
-              '⚠️',
-              colors.warning
-            )}
-            {renderStatCard(
-              'Low Stock',
-              stats.lowStock,
-              '📉',
-              colors.citrus[500]
-            )}
-            {renderStatCard(
-              'Recipes',
-              stats.totalRecipes,
-              '📖',
-              colors.secondary[500]
-            )}
-            {renderStatCard(
-              'Can Cook Now',
-              stats.canCookNow,
-              '🍳',
-              colors.success
-            )}
-            {renderStatCard(
-              'Shopping List',
-              stats.shoppingItems,
-              '��',
-              colors.accent[500]
-            )}
-          </View>
-        </PantryCard>
+        <View style={styles.statsGrid}>
+          {statCards.map((card, index) => (
+            <FadeSlideIn
+              key={card.title}
+              delay={index * 70}
+              style={styles.statCardWrapper}
+            >
+              <AnimatedPressable
+                onPress={card.onPress}
+                style={styles.statCard}
+                accessibilityLabel={`${card.title}: ${card.value}`}
+              >
+                <View
+                  style={[
+                    styles.statIconContainer,
+                    { backgroundColor: `${card.color}22` },
+                  ]}
+                >
+                  <Text style={styles.statIcon}>{card.icon}</Text>
+                </View>
+                <Text style={styles.statValue}>{card.value}</Text>
+                <Text style={styles.statTitle}>{card.title}</Text>
+              </AnimatedPressable>
+            </FadeSlideIn>
+          ))}
+        </View>
 
-        {/* Quick Actions */}
-        <PantryCard variant='fresh' padding='lg'>
-          <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
-          <View style={styles.quickActionsGrid}>
-            {renderQuickAction('Add Item', '➕', colors.primary[500], () => {
-              Alert.alert('Add Item', 'Navigate to Pantry to add items');
-            })}
-            {renderQuickAction(
-              'Find Recipe',
-              '🔍',
-              colors.secondary[500],
-              () => {
-                Alert.alert(
-                  'Find Recipe',
-                  'Navigate to Recipes to discover meals'
+        {/* Expiring soon preview */}
+        {stats.expiringPreview.length > 0 && (
+          <FadeSlideIn delay={420}>
+            <PantryCard variant='warm' padding='lg'>
+              <Text style={styles.sectionTitle}>⏰ Use these first</Text>
+              {stats.expiringPreview.map(item => {
+                const days = getDaysUntilExpiration(item.expirationDate);
+                return (
+                  <View key={item.id} style={styles.expiringRow}>
+                    <Text style={styles.expiringName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View
+                      style={[
+                        styles.expiringBadge,
+                        {
+                          backgroundColor:
+                            days <= 1
+                              ? theme.colors.errorSoft
+                              : theme.colors.warningSoft,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.expiringBadgeText,
+                          {
+                            color:
+                              days <= 1
+                                ? theme.colors.error
+                                : theme.colors.warning,
+                          },
+                        ]}
+                      >
+                        {days <= 0
+                          ? 'Today'
+                          : days === 1
+                            ? '1 day'
+                            : `${days} days`}
+                      </Text>
+                    </View>
+                  </View>
                 );
-              }
-            )}
-            {renderQuickAction('Scan Barcode', '📱', colors.accent[500], () => {
-              Alert.alert('Scan Barcode', 'Navigate to Scanner to scan items');
-            })}
-            {renderQuickAction('View Analytics', '📈', colors.sage[500], () => {
-              Alert.alert('Analytics', 'View detailed analytics and insights');
-            })}
-          </View>
-        </PantryCard>
-
-        {/* Household Info */}
-        {currentHousehold && (
-          <PantryCard variant='warm' padding='lg'>
-            <Text style={styles.sectionTitle}>🏠 Household</Text>
-            <View style={styles.householdInfo}>
-              <Text style={styles.householdName}>{currentHousehold.name}</Text>
-              <Text style={styles.householdCode}>
-                Code: {currentHousehold.code}
-              </Text>
+              })}
               <PantryButton
-                title='Manage Household'
-                onPress={() =>
-                  Alert.alert('Household', 'Navigate to household settings')
-                }
+                title='Find recipes for these'
+                onPress={() => goToTab('Recipes')}
                 variant='outline'
                 size='sm'
                 fullWidth
               />
-            </View>
-          </PantryCard>
+            </PantryCard>
+          </FadeSlideIn>
         )}
 
-        {/* Recent Activity */}
-        <PantryCard variant='default' padding='lg'>
-          <Text style={styles.sectionTitle}>🕒 Recent Activity</Text>
-          <View style={styles.activityItem}>
-            <Text style={styles.activityText}>No recent activity</Text>
-            <Text style={styles.activitySubtext}>
-              Your household activity will appear here
-            </Text>
-          </View>
-        </PantryCard>
+        {/* Quick Actions */}
+        <FadeSlideIn delay={490}>
+          <PantryCard variant='fresh' padding='lg'>
+            <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
+            <View style={styles.quickActionsGrid}>
+              {quickActions.map(action => (
+                <AnimatedPressable
+                  key={action.title}
+                  onPress={action.onPress}
+                  style={styles.quickActionCard}
+                  accessibilityLabel={action.title}
+                >
+                  <View
+                    style={[
+                      styles.actionIconContainer,
+                      { backgroundColor: `${action.color}22` },
+                    ]}
+                  >
+                    <Text style={styles.actionIcon}>{action.icon}</Text>
+                  </View>
+                  <Text style={styles.actionTitle}>{action.title}</Text>
+                </AnimatedPressable>
+              ))}
+            </View>
+          </PantryCard>
+        </FadeSlideIn>
+
+        {/* Household Info */}
+        <FadeSlideIn delay={560}>
+          {currentHousehold ? (
+            <PantryCard variant='warm' padding='lg'>
+              <Text style={styles.sectionTitle}>🏠 Household</Text>
+              <View style={styles.householdInfo}>
+                <Text style={styles.householdName}>
+                  {currentHousehold.name}
+                </Text>
+                <Text style={styles.householdCode}>
+                  Invite code: {currentHousehold.code}
+                </Text>
+                <PantryButton
+                  title='Manage Household'
+                  onPress={() => goToScreen('Household')}
+                  variant='outline'
+                  size='sm'
+                  fullWidth
+                />
+              </View>
+            </PantryCard>
+          ) : (
+            <PantryCard variant='warm' padding='lg'>
+              <Text style={styles.sectionTitle}>🏠 Better together</Text>
+              <Text style={styles.householdPrompt}>
+                Create or join a household to share your pantry and shopping
+                list with family or roommates.
+              </Text>
+              <PantryButton
+                title='Set up household'
+                onPress={() => goToScreen('Household')}
+                variant='secondary'
+                size='md'
+                icon='🤝'
+                fullWidth
+              />
+            </PantryCard>
+          )}
+        </FadeSlideIn>
+
+        {/* Recently added */}
+        <FadeSlideIn delay={630}>
+          <PantryCard variant='default' padding='lg'>
+            <Text style={styles.sectionTitle}>🕒 Recently Added</Text>
+            {stats.recentItems.length > 0 ? (
+              stats.recentItems.map(item => (
+                <View key={item.id} style={styles.activityRow}>
+                  <Text style={styles.activityBullet}>•</Text>
+                  <Text style={styles.activityText} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={styles.activityMeta}>
+                    {item.quantity} {item.unit}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.activityItem}>
+                <Text style={styles.activityEmpty}>
+                  Nothing here yet — scan or add your first item!
+                </Text>
+                <PantryButton
+                  title='Add items'
+                  onPress={() => goToTab('Pantry')}
+                  variant='ghost'
+                  size='sm'
+                />
+              </View>
+            )}
+          </PantryCard>
+        </FadeSlideIn>
       </ScrollView>
+
+      <SearchModal
+        visible={showSearch}
+        onClose={() => setShowSearch(false)}
+        onNavigate={goToTab}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  actionIcon: {
-    fontSize: 24,
-  },
-  actionIconContainer: {
-    alignItems: 'center',
-    borderRadius: 28,
-    height: 56,
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-    width: 56,
-  },
-  actionTitle: {
-    ...typography.bodySmall,
-    color: colors.neutral[700],
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  activityItem: {
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-  },
-  activitySubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-    textAlign: 'center',
-  },
-  activityText: {
-    ...typography.body,
-    color: colors.neutral[600],
-    marginBottom: spacing.xs,
-  },
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  householdCode: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    fontFamily: 'monospace',
-    marginBottom: spacing.md,
-  },
-  householdInfo: {
-    alignItems: 'center',
-  },
-  householdName: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  quickActionCard: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: borderRadius.card,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    width: '48%',
-    ...shadows.sm,
-    borderColor: colors.primary[100],
-    borderWidth: 1,
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  statCard: {
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: borderRadius.card,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    width: '48%',
-    ...shadows.sm,
-    borderColor: colors.neutral[100],
-    borderWidth: 1,
-  },
-  statIcon: {
-    fontSize: 20,
-  },
-  statIconContainer: {
-    alignItems: 'center',
-    borderRadius: 24,
-    height: 48,
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-    width: 48,
-  },
-  statTitle: {
-    ...typography.caption,
-    color: colors.neutral[600],
-    textAlign: 'center',
-  },
-  statValue: {
-    ...typography.h3,
-    color: colors.neutral[900],
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    actionIcon: {
+      fontSize: 24,
+    },
+    actionIconContainer: {
+      alignItems: 'center',
+      borderRadius: 28,
+      height: 56,
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+      width: 56,
+    },
+    actionTitle: {
+      ...typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    activityBullet: {
+      color: theme.colors.primary,
+      fontSize: 18,
+      marginRight: spacing.sm,
+    },
+    activityEmpty: {
+      ...typography.bodySmall,
+      color: theme.colors.textMuted,
+      marginBottom: spacing.sm,
+      textAlign: 'center',
+    },
+    activityItem: {
+      alignItems: 'center',
+      paddingVertical: spacing.sm,
+    },
+    activityMeta: {
+      ...typography.caption,
+      color: theme.colors.textMuted,
+    },
+    activityRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      paddingVertical: spacing.xs,
+    },
+    activityText: {
+      ...typography.body,
+      color: theme.colors.textSecondary,
+      flex: 1,
+    },
+    container: {
+      backgroundColor: theme.colors.background,
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+    },
+    expiringBadge: {
+      borderRadius: borderRadius.pill,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 2,
+    },
+    expiringBadgeText: {
+      ...typography.caption,
+      fontWeight: '700',
+    },
+    expiringName: {
+      ...typography.body,
+      color: theme.colors.text,
+      flex: 1,
+      marginRight: spacing.sm,
+    },
+    expiringRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.sm,
+    },
+    householdCode: {
+      ...typography.bodySmall,
+      color: theme.colors.textMuted,
+      fontFamily: 'monospace',
+      marginBottom: spacing.md,
+    },
+    householdInfo: {
+      alignItems: 'center',
+    },
+    householdName: {
+      ...typography.h4,
+      color: theme.colors.text,
+      marginBottom: spacing.xs,
+    },
+    householdPrompt: {
+      ...typography.bodySmall,
+      color: theme.colors.textMuted,
+      marginBottom: spacing.md,
+    },
+    quickActionCard: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.card,
+      borderWidth: 1,
+      marginBottom: spacing.md,
+      padding: spacing.md,
+      width: '48%',
+      ...shadows.sm,
+      shadowColor: theme.colors.shadow,
+    },
+    quickActionsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+    },
+    scrollContent: {
+      padding: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: theme.colors.text,
+      marginBottom: spacing.md,
+    },
+    statCard: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.card,
+      borderWidth: 1,
+      padding: spacing.md,
+      ...shadows.sm,
+      shadowColor: theme.colors.shadow,
+    },
+    statCardWrapper: {
+      marginBottom: spacing.md,
+      width: '48%',
+    },
+    statIcon: {
+      fontSize: 20,
+    },
+    statIconContainer: {
+      alignItems: 'center',
+      borderRadius: 24,
+      height: 48,
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+      width: 48,
+    },
+    statTitle: {
+      ...typography.caption,
+      color: theme.colors.textMuted,
+      textAlign: 'center',
+    },
+    statValue: {
+      ...typography.h3,
+      color: theme.colors.text,
+      fontWeight: '700',
+      marginBottom: spacing.xs,
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+    },
+  });

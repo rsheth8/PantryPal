@@ -1,7 +1,14 @@
 import '@testing-library/jest-native/extend-expect';
 
 // Mock Expo modules
-jest.mock('expo-linear-gradient', () => 'LinearGradient');
+jest.mock('expo-linear-gradient', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    LinearGradient: ({ children, ...props }) =>
+      React.createElement(View, props, children),
+  };
+});
 jest.mock('expo-camera', () => ({
   Camera: 'Camera',
   CameraType: {
@@ -23,12 +30,55 @@ jest.mock('expo-web-browser', () => ({
 jest.mock('expo-crypto', () => ({
   digestStringAsync: jest.fn(),
 }));
+jest.mock('expo-keep-awake', () => ({
+  useKeepAwake: jest.fn(),
+  activateKeepAwakeAsync: jest.fn(),
+  deactivateKeepAwake: jest.fn(),
+}));
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy' },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+}));
 jest.mock('expo-image-picker', () => ({
-  launchImageLibraryAsync: jest.fn(),
+  launchImageLibraryAsync: jest.fn(() => Promise.resolve({ canceled: true })),
+  launchCameraAsync: jest.fn(() => Promise.resolve({ canceled: true })),
+  requestCameraPermissionsAsync: jest.fn(() =>
+    Promise.resolve({ granted: true })
+  ),
+  requestMediaLibraryPermissionsAsync: jest.fn(() =>
+    Promise.resolve({ granted: true })
+  ),
   MediaTypeOptions: {
     Images: 'Images',
   },
 }));
+
+// react-native-svg renders fine under jest via its mock
+jest.mock('react-native-svg', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const Mock = ({ children, ...props }) =>
+    React.createElement(View, props, children);
+  return {
+    __esModule: true,
+    default: Mock,
+    Svg: Mock,
+    Circle: Mock,
+    Path: Mock,
+    G: Mock,
+    Rect: Mock,
+    Defs: Mock,
+    LinearGradient: Mock,
+    Stop: Mock,
+  };
+});
 
 // Mock React Navigation
 jest.mock('@react-navigation/native', () => ({

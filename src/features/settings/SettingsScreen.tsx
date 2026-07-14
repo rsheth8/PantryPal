@@ -6,22 +6,54 @@ import {
   ScrollView,
   Switch,
   Alert,
+  Share,
+  TouchableOpacity,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
-import { colors, typography, spacing } from '../../utils/designSystem';
+import { FadeSlideIn, useToast } from '../../components/ui';
+import { Theme, ThemeMode } from '../../theme/themes';
+import { useThemedStyles, useTheme } from '../../theme/ThemeContext';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { haptics } from '../../utils/haptics';
+import { logger } from '../../utils/logger';
 
 interface SettingsScreenProps {
   onSignOut?: () => void;
 }
 
+const THEME_OPTIONS: { key: ThemeMode; label: string; icon: string }[] = [
+  { key: 'light', label: 'Light', icon: '☀️' },
+  { key: 'dark', label: 'Dark', icon: '🌙' },
+  { key: 'system', label: 'Auto', icon: '📱' },
+];
+
 export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
-  const { currentUser, currentHousehold, leaveHousehold } = useMultiUserStore();
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = React.useState(false);
-  const [autoSyncEnabled, setAutoSyncEnabled] = React.useState(true);
+  const styles = useThemedStyles(createStyles);
+  const { theme, mode, setMode } = useTheme();
+  const { showToast } = useToast();
+  const {
+    currentUser,
+    currentHousehold,
+    leaveHousehold,
+    preferences,
+    updatePreferences,
+    pantry,
+    recipes,
+    shoppingList,
+  } = useMultiUserStore();
+
+  const setNotificationPref = (
+    key: keyof typeof preferences.notifications,
+    value: boolean
+  ) => {
+    haptics.selection();
+    updatePreferences({
+      notifications: { ...preferences.notifications, [key]: value },
+    });
+  };
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -29,9 +61,7 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: () => {
-          onSignOut?.();
-        },
+        onPress: () => onSignOut?.(),
       },
     ]);
   };
@@ -47,288 +77,436 @@ export default function SettingsScreen({ onSignOut }: SettingsScreenProps) {
           style: 'destructive',
           onPress: async () => {
             await leaveHousehold();
-            Alert.alert('Success', 'You have left the household');
+            showToast('You left the household', { type: 'info' });
           },
         },
       ]
     );
   };
 
-  const handleExportData = () => {
-    Alert.alert('Export Data', 'Export functionality coming soon!');
+  const handleExportData = async () => {
+    try {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        user: currentUser?.email,
+        pantry: pantry.map(({ id: _id, ...item }) => item),
+        shoppingList: shoppingList.map(({ id: _id, ...item }) => item),
+        recipes: recipes.map(({ id: _id, ...recipe }) => recipe),
+      };
+      await Share.share({
+        title: 'PantryPal data export',
+        message: JSON.stringify(payload, null, 2),
+      });
+    } catch (error) {
+      logger.warn('Export failed:', error);
+      showToast('Export cancelled', { type: 'info' });
+    }
   };
 
-  const handleImportData = () => {
-    Alert.alert('Import Data', 'Import functionality coming soon!');
-  };
-
-  const handleClearData = () => {
-    Alert.alert(
-      'Clear All Data',
-      'This will permanently delete all your data. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear Data',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Success', 'All data has been cleared');
-          },
-        },
-      ]
+  const adjustReminderDays = (delta: number) => {
+    const next = Math.min(
+      14,
+      Math.max(1, preferences.expirationReminderDays + delta)
     );
+    haptics.selection();
+    updatePreferences({ expirationReminderDays: next });
   };
 
   return (
     <View style={styles.container}>
       <PantryHeader
         title='Settings'
-        subtitle='Manage your preferences'
+        subtitle='Make PantryPal yours'
         gradient='twilight'
       />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Section */}
-        <PantryCard variant='elevated' padding='lg'>
-          <Text style={styles.sectionTitle}>👤 Profile</Text>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>
-              {currentUser?.name || 'User'}
-            </Text>
-            <Text style={styles.profileEmail}>
-              {currentUser?.email || 'user@example.com'}
-            </Text>
-            {currentHousehold && (
-              <Text style={styles.householdName}>{currentHousehold.name}</Text>
-            )}
-          </View>
-        </PantryCard>
-
-        {/* App Settings */}
-        <PantryCard variant='fresh' padding='lg'>
-          <Text style={styles.sectionTitle}>⚙️ App Settings</Text>
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>Push Notifications</Text>
-              <Text style={styles.settingSubtitle}>
-                Get notified about expiring items and updates
-              </Text>
+        {/* Profile */}
+        <FadeSlideIn>
+          <PantryCard variant='elevated' padding='lg'>
+            <View style={styles.profileRow}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {(currentUser?.name || 'U').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>
+                  {currentUser?.name || 'User'}
+                </Text>
+                <Text style={styles.profileEmail}>
+                  {currentUser?.email || ''}
+                </Text>
+                {currentHousehold && (
+                  <Text style={styles.householdName}>
+                    🏠 {currentHousehold.name}
+                  </Text>
+                )}
+              </View>
             </View>
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{
-                false: colors.neutral[300],
-                true: colors.primary[300],
-              }}
-              thumbColor={
-                notificationsEnabled ? colors.primary[500] : colors.neutral[400]
-              }
-            />
-          </View>
+          </PantryCard>
+        </FadeSlideIn>
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>Dark Mode</Text>
-              <Text style={styles.settingSubtitle}>Switch to dark theme</Text>
+        {/* Appearance */}
+        <FadeSlideIn delay={80}>
+          <PantryCard variant='fresh' padding='lg'>
+            <Text style={styles.sectionTitle}>🎨 Appearance</Text>
+            <View style={styles.themeRow}>
+              {THEME_OPTIONS.map(option => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.themeOption,
+                    mode === option.key && styles.themeOptionActive,
+                  ]}
+                  onPress={() => {
+                    haptics.selection();
+                    setMode(option.key);
+                  }}
+                  accessibilityRole='button'
+                  accessibilityState={{ selected: mode === option.key }}
+                >
+                  <Text style={styles.themeOptionIcon}>{option.icon}</Text>
+                  <Text
+                    style={[
+                      styles.themeOptionLabel,
+                      mode === option.key && styles.themeOptionLabelActive,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <Switch
-              value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
-              trackColor={{
-                false: colors.neutral[300],
-                true: colors.primary[300],
-              }}
-              thumbColor={
-                darkModeEnabled ? colors.primary[500] : colors.neutral[400]
-              }
-            />
-          </View>
+          </PantryCard>
+        </FadeSlideIn>
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <Text style={styles.settingTitle}>Auto Sync</Text>
-              <Text style={styles.settingSubtitle}>
-                Automatically sync data across devices
-              </Text>
+        {/* Notifications */}
+        <FadeSlideIn delay={140}>
+          <PantryCard variant='default' padding='lg'>
+            <Text style={styles.sectionTitle}>🔔 Notifications</Text>
+
+            {(
+              [
+                {
+                  key: 'expirationReminders',
+                  title: 'Expiration reminders',
+                  subtitle: 'Alerts before food goes bad',
+                },
+                {
+                  key: 'lowStockAlerts',
+                  title: 'Low stock alerts',
+                  subtitle: 'Know when staples run out',
+                },
+                {
+                  key: 'householdUpdates',
+                  title: 'Household updates',
+                  subtitle: 'Activity from household members',
+                },
+              ] as const
+            ).map(setting => (
+              <View key={setting.key} style={styles.settingItem}>
+                <View style={styles.settingContent}>
+                  <Text style={styles.settingTitle}>{setting.title}</Text>
+                  <Text style={styles.settingSubtitle}>{setting.subtitle}</Text>
+                </View>
+                <Switch
+                  value={preferences.notifications[setting.key]}
+                  onValueChange={value =>
+                    setNotificationPref(setting.key, value)
+                  }
+                  trackColor={{
+                    false: theme.colors.surfaceMuted,
+                    true: theme.palette.primary[300],
+                  }}
+                  thumbColor={
+                    preferences.notifications[setting.key]
+                      ? theme.palette.primary[600]
+                      : theme.colors.borderStrong
+                  }
+                />
+              </View>
+            ))}
+
+            <View style={styles.settingItem}>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>Remind me before expiry</Text>
+                <Text style={styles.settingSubtitle}>
+                  Days ahead to warn about expiring food
+                </Text>
+              </View>
+              <View style={styles.stepper}>
+                <TouchableOpacity
+                  style={styles.stepperButton}
+                  onPress={() => adjustReminderDays(-1)}
+                >
+                  <Text style={styles.stepperButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.stepperValue}>
+                  {preferences.expirationReminderDays}d
+                </Text>
+                <TouchableOpacity
+                  style={styles.stepperButton}
+                  onPress={() => adjustReminderDays(1)}
+                >
+                  <Text style={styles.stepperButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <Switch
-              value={autoSyncEnabled}
-              onValueChange={setAutoSyncEnabled}
-              trackColor={{
-                false: colors.neutral[300],
-                true: colors.primary[300],
-              }}
-              thumbColor={
-                autoSyncEnabled ? colors.primary[500] : colors.neutral[400]
-              }
-            />
-          </View>
-        </PantryCard>
+          </PantryCard>
+        </FadeSlideIn>
 
-        {/* Data Management */}
-        <PantryCard variant='warm' padding='lg'>
-          <Text style={styles.sectionTitle}>📊 Data Management</Text>
+        {/* Sharing defaults */}
+        <FadeSlideIn delay={200}>
+          <PantryCard variant='warm' padding='lg'>
+            <Text style={styles.sectionTitle}>👥 Sharing</Text>
+            <View style={styles.settingItem}>
+              <View style={styles.settingContent}>
+                <Text style={styles.settingTitle}>Share new items</Text>
+                <Text style={styles.settingSubtitle}>
+                  New pantry items are visible to your household by default
+                </Text>
+              </View>
+              <Switch
+                value={preferences.defaultItemVisibility === 'shared'}
+                onValueChange={value =>
+                  updatePreferences({
+                    defaultItemVisibility: value ? 'shared' : 'private',
+                  })
+                }
+                trackColor={{
+                  false: theme.colors.surfaceMuted,
+                  true: theme.palette.primary[300],
+                }}
+                thumbColor={
+                  preferences.defaultItemVisibility === 'shared'
+                    ? theme.palette.primary[600]
+                    : theme.colors.borderStrong
+                }
+              />
+            </View>
+          </PantryCard>
+        </FadeSlideIn>
 
-          <PantryButton
-            title='Export Data'
-            onPress={handleExportData}
-            variant='outline'
-            size='md'
-            icon='📤'
-            fullWidth
-          />
-
-          <PantryButton
-            title='Import Data'
-            onPress={handleImportData}
-            variant='outline'
-            size='md'
-            icon='📥'
-            fullWidth
-          />
-
-          <PantryButton
-            title='Clear All Data'
-            onPress={handleClearData}
-            variant='error'
-            size='md'
-            icon='🗑️'
-            fullWidth
-          />
-        </PantryCard>
-
-        {/* Household Management */}
-        {currentHousehold && (
-          <PantryCard variant='outlined' padding='lg'>
-            <Text style={styles.sectionTitle}>🏠 Household</Text>
-            <Text style={styles.householdDescription}>
-              You are currently part of the &quot;{currentHousehold.name}&quot;
-              household.
-            </Text>
-
+        {/* Data */}
+        <FadeSlideIn delay={260}>
+          <PantryCard variant='default' padding='lg'>
+            <Text style={styles.sectionTitle}>📦 Your Data</Text>
             <PantryButton
-              title='Leave Household'
-              onPress={handleLeaveHousehold}
-              variant='warning'
+              title='Export my data'
+              onPress={handleExportData}
+              variant='outline'
               size='md'
-              icon='🚪'
+              icon='📤'
               fullWidth
             />
           </PantryCard>
+        </FadeSlideIn>
+
+        {/* Household */}
+        {currentHousehold && (
+          <FadeSlideIn delay={300}>
+            <PantryCard variant='outlined' padding='lg'>
+              <Text style={styles.sectionTitle}>🏠 Household</Text>
+              <Text style={styles.householdDescription}>
+                You are part of &quot;{currentHousehold.name}&quot;. Invite
+                code: {currentHousehold.code}
+              </Text>
+              <PantryButton
+                title='Leave Household'
+                onPress={handleLeaveHousehold}
+                variant='warning'
+                size='md'
+                icon='🚪'
+                fullWidth
+              />
+            </PantryCard>
+          </FadeSlideIn>
         )}
 
-        {/* Account Actions */}
-        <PantryCard variant='default' padding='lg'>
-          <Text style={styles.sectionTitle}>🔐 Account</Text>
+        {/* Account */}
+        <FadeSlideIn delay={340}>
+          <PantryCard variant='default' padding='lg'>
+            <Text style={styles.sectionTitle}>🔐 Account</Text>
+            <PantryButton
+              title='Sign Out'
+              onPress={handleSignOut}
+              variant='outline'
+              size='md'
+              icon='👋'
+              fullWidth
+            />
+          </PantryCard>
+        </FadeSlideIn>
 
-          <PantryButton
-            title='Sign Out'
-            onPress={handleSignOut}
-            variant='outline'
-            size='md'
-            icon='🚪'
-            fullWidth
-          />
-        </PantryCard>
-
-        {/* App Info */}
-        <PantryCard variant='outlined' padding='lg'>
-          <Text style={styles.sectionTitle}>ℹ️ App Info</Text>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Version</Text>
-            <Text style={styles.infoValue}>1.0.0</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Build</Text>
-            <Text style={styles.infoValue}>2024.1.1</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Developer</Text>
-            <Text style={styles.infoValue}>PantryPal Team</Text>
-          </View>
-        </PantryCard>
+        {/* Info */}
+        <FadeSlideIn delay={380}>
+          <PantryCard variant='outlined' padding='lg' style={styles.lastCard}>
+            <Text style={styles.sectionTitle}>ℹ️ About</Text>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Version</Text>
+              <Text style={styles.infoValue}>1.0.0</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Made with</Text>
+              <Text style={styles.infoValue}>❤️ + 🥫</Text>
+            </View>
+          </PantryCard>
+        </FadeSlideIn>
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  householdDescription: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  householdName: {
-    ...typography.bodySmall,
-    color: colors.primary[600],
-    fontWeight: '600',
-  },
-  infoItem: {
-    alignItems: 'center',
-    borderBottomColor: colors.neutral[100],
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  infoLabel: {
-    ...typography.body,
-    color: colors.neutral[700],
-  },
-  infoValue: {
-    ...typography.body,
-    color: colors.neutral[600],
-    fontWeight: '500',
-  },
-  profileEmail: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-    marginBottom: spacing.xs,
-  },
-  profileInfo: {
-    alignItems: 'center',
-  },
-  profileName: {
-    ...typography.h3,
-    color: colors.neutral[800],
-    marginBottom: spacing.xs,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-  settingContent: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  settingItem: {
-    alignItems: 'center',
-    borderBottomColor: colors.neutral[100],
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  settingSubtitle: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  settingTitle: {
-    ...typography.body,
-    color: colors.neutral[800],
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    avatar: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.primarySoft,
+      borderRadius: 28,
+      height: 56,
+      justifyContent: 'center',
+      marginRight: spacing.md,
+      width: 56,
+    },
+    avatarText: {
+      ...typography.h3,
+      color: theme.colors.primary,
+    },
+    container: {
+      backgroundColor: theme.colors.background,
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    householdDescription: {
+      ...typography.bodySmall,
+      color: theme.colors.textMuted,
+      marginBottom: spacing.md,
+    },
+    householdName: {
+      ...typography.bodySmall,
+      color: theme.colors.primary,
+      fontWeight: '600',
+      marginTop: 2,
+    },
+    infoItem: {
+      alignItems: 'center',
+      borderBottomColor: theme.colors.divider,
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+    },
+    infoLabel: {
+      ...typography.body,
+      color: theme.colors.textSecondary,
+    },
+    infoValue: {
+      ...typography.body,
+      color: theme.colors.textMuted,
+      fontWeight: '500',
+    },
+    lastCard: {
+      marginBottom: spacing.xxl,
+    },
+    profileEmail: {
+      ...typography.bodySmall,
+      color: theme.colors.textMuted,
+    },
+    profileInfo: {
+      flex: 1,
+    },
+    profileName: {
+      ...typography.h4,
+      color: theme.colors.text,
+    },
+    profileRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: theme.colors.text,
+      marginBottom: spacing.md,
+    },
+    settingContent: {
+      flex: 1,
+      marginRight: spacing.md,
+    },
+    settingItem: {
+      alignItems: 'center',
+      borderBottomColor: theme.colors.divider,
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+    },
+    settingSubtitle: {
+      ...typography.bodySmall,
+      color: theme.colors.textMuted,
+    },
+    settingTitle: {
+      ...typography.body,
+      color: theme.colors.text,
+      fontWeight: '600',
+      marginBottom: 2,
+    },
+    stepper: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.backgroundSubtle,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.pill,
+      borderWidth: 1,
+      flexDirection: 'row',
+    },
+    stepperButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 32,
+      width: 32,
+    },
+    stepperButtonText: {
+      color: theme.colors.textSecondary,
+      fontSize: 17,
+      fontWeight: '600',
+    },
+    stepperValue: {
+      ...typography.bodySmall,
+      color: theme.colors.primary,
+      fontWeight: '700',
+      minWidth: 32,
+      textAlign: 'center',
+    },
+    themeOption: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.md,
+      borderWidth: 1.5,
+      flex: 1,
+      paddingVertical: spacing.sm + 2,
+    },
+    themeOptionActive: {
+      backgroundColor: theme.colors.primarySoft,
+      borderColor: theme.colors.primary,
+    },
+    themeOptionIcon: {
+      fontSize: 20,
+      marginBottom: 2,
+    },
+    themeOptionLabel: {
+      ...typography.caption,
+      color: theme.colors.textMuted,
+      fontWeight: '600',
+    },
+    themeOptionLabelActive: {
+      color: theme.colors.primary,
+    },
+    themeRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+  });

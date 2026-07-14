@@ -1,19 +1,23 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
-  TouchableOpacity,
+  Animated,
+  Pressable,
   Text,
   StyleSheet,
   ViewStyle,
   TextStyle,
   View,
+  ActivityIndicator,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
-  colors,
   typography,
   spacing,
   borderRadius,
   shadows,
 } from '../utils/designSystem';
+import { useTheme } from '../theme/ThemeContext';
+import { haptics } from '../utils/haptics';
 
 interface PantryButtonProps {
   title: string;
@@ -37,6 +41,8 @@ interface PantryButtonProps {
   fullWidth?: boolean;
 }
 
+const GRADIENT_VARIANTS = ['primary', 'secondary', 'accent'] as const;
+
 export default function PantryButton({
   title,
   onPress,
@@ -50,154 +56,173 @@ export default function PantryButton({
   textStyle,
   fullWidth = false,
 }: PantryButtonProps) {
-  const getButtonStyle = (): ViewStyle => {
-    const baseStyle: ViewStyle = {
-      borderRadius: borderRadius.button,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      ...shadows.sm,
-    };
+  const { theme } = useTheme();
+  const scale = useRef(new Animated.Value(1)).current;
 
-    // Size styles
-    const sizeStyles = {
-      sm: {
-        paddingVertical: spacing.xs,
-        paddingHorizontal: spacing.sm,
-        minHeight: 36,
-      },
-      md: {
-        paddingVertical: spacing.sm,
-        paddingHorizontal: spacing.md,
-        minHeight: 44,
-      },
-      lg: {
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.lg,
-        minHeight: 52,
-      },
-    };
+  const animateTo = (value: number) => {
+    Animated.spring(scale, {
+      toValue: value,
+      useNativeDriver: true,
+      speed: 40,
+      bounciness: 6,
+    }).start();
+  };
 
-    // Variant styles
-    const variantStyles = {
-      primary: {
-        backgroundColor: colors.primary[500],
-        borderWidth: 0,
-      },
-      secondary: {
-        backgroundColor: colors.secondary[500],
-        borderWidth: 0,
-      },
-      accent: {
-        backgroundColor: colors.accent[500],
-        borderWidth: 0,
-      },
-      outline: {
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderColor: colors.primary[500],
-      },
-      ghost: {
-        backgroundColor: 'transparent',
-        borderWidth: 0,
-      },
-      success: {
-        backgroundColor: colors.success,
-        borderWidth: 0,
-      },
-      warning: {
-        backgroundColor: colors.warning,
-        borderWidth: 0,
-      },
-      error: {
-        backgroundColor: colors.error,
-        borderWidth: 0,
-      },
-    };
+  const isGradient = GRADIENT_VARIANTS.includes(
+    variant as (typeof GRADIENT_VARIANTS)[number]
+  );
 
-    const widthStyle = fullWidth ? { width: '100%' as const } : {};
+  const gradientColors: Record<string, [string, string]> = {
+    primary: theme.gradients.primary as [string, string],
+    secondary: theme.gradients.secondary as [string, string],
+    accent: theme.gradients.accent as [string, string],
+  };
 
-    return {
-      ...baseStyle,
-      ...sizeStyles[size],
-      ...variantStyles[variant],
-      ...widthStyle,
-      opacity: disabled ? 0.6 : 1,
-    };
+  const solidColors: Record<string, string> = {
+    success: theme.colors.success,
+    warning: theme.colors.warning,
+    error: theme.colors.error,
+  };
+
+  const sizeStyles: Record<string, ViewStyle> = {
+    sm: {
+      paddingVertical: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      minHeight: 36,
+    },
+    md: {
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      minHeight: 44,
+    },
+    lg: {
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      minHeight: 52,
+    },
+  };
+
+  const containerStyle: ViewStyle = {
+    borderRadius: borderRadius.button,
+    overflow: 'hidden',
+    ...(isGradient || variant in solidColors
+      ? { ...shadows.sm, shadowColor: theme.colors.shadow }
+      : {}),
+    ...(variant === 'outline'
+      ? {
+          borderWidth: 2,
+          borderColor: theme.colors.primary,
+          backgroundColor: 'transparent',
+        }
+      : {}),
+    ...(variant === 'ghost' ? { backgroundColor: 'transparent' } : {}),
+    ...(variant in solidColors
+      ? { backgroundColor: solidColors[variant] }
+      : {}),
+    ...(fullWidth ? { width: '100%' as const } : {}),
+    opacity: disabled ? 0.55 : 1,
+  };
+
+  const innerStyle: ViewStyle = {
+    ...sizeStyles[size],
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   };
 
   const getTextStyle = (): TextStyle => {
-    const baseTextStyle: TextStyle = {
-      ...typography.button,
-    };
-
     const sizeTextStyles = {
       sm: { fontSize: 14 },
       md: { fontSize: 16 },
       lg: { fontSize: 18 },
     };
 
-    const variantTextStyles = {
-      primary: { color: '#fff' },
-      secondary: { color: '#fff' },
-      accent: { color: '#fff' },
-      outline: { color: colors.primary[500] },
-      ghost: { color: colors.primary[500] },
-      success: { color: '#fff' },
-      warning: { color: '#fff' },
-      error: { color: '#fff' },
-    };
+    const color =
+      variant === 'outline' || variant === 'ghost'
+        ? theme.colors.primary
+        : '#fff';
 
     return {
-      ...baseTextStyle,
+      ...typography.button,
       ...sizeTextStyles[size],
-      ...variantTextStyles[variant],
+      color,
     };
   };
 
-  const getSubtitleStyle = (): TextStyle => {
-    return {
-      ...typography.bodySmall,
-      color:
-        variant === 'outline' || variant === 'ghost'
-          ? colors.neutral[600]
-          : 'rgba(255, 255, 255, 0.8)',
-      marginTop: spacing.xs,
-    };
+  const getSubtitleStyle = (): TextStyle => ({
+    ...typography.bodySmall,
+    color:
+      variant === 'outline' || variant === 'ghost'
+        ? theme.colors.textMuted
+        : 'rgba(255, 255, 255, 0.85)',
+    marginTop: spacing.xs,
+  });
+
+  const handlePress = () => {
+    haptics.light();
+    onPress();
   };
 
-  return (
-    <TouchableOpacity
-      style={[getButtonStyle(), style]}
-      onPress={onPress}
-      disabled={disabled || loading}
-      activeOpacity={0.8}
-    >
+  const content = (
+    <View style={innerStyle}>
+      {loading ? (
+        <ActivityIndicator
+          size='small'
+          color={
+            variant === 'outline' || variant === 'ghost'
+              ? theme.colors.primary
+              : '#fff'
+          }
+          style={styles.spinner}
+        />
+      ) : null}
       {subtitle ? (
         <View style={styles.contentContainer}>
           <View style={styles.titleRow}>
-            {icon && (
+            {icon && !loading && (
               <Text style={[getTextStyle(), styles.iconText]}>{icon}</Text>
             )}
-            <Text style={[getTextStyle(), textStyle]}>
-              {loading ? 'Loading...' : title}
-            </Text>
+            <Text style={[getTextStyle(), textStyle]}>{title}</Text>
           </View>
           <Text style={getSubtitleStyle()}>{subtitle}</Text>
         </View>
       ) : (
         <>
-          {icon && (
-            <Text style={[getTextStyle(), { marginRight: spacing.xs }]}>
-              {icon}
-            </Text>
+          {icon && !loading && (
+            <Text style={[getTextStyle(), styles.iconText]}>{icon}</Text>
           )}
-          <Text style={[getTextStyle(), textStyle]}>
-            {loading ? 'Loading...' : title}
-          </Text>
+          <Text style={[getTextStyle(), textStyle]}>{title}</Text>
         </>
       )}
-    </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      onPressIn={() => animateTo(0.96)}
+      onPressOut={() => animateTo(1)}
+      disabled={disabled || loading}
+      accessibilityRole='button'
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: disabled || loading }}
+    >
+      <Animated.View
+        style={[containerStyle, style, { transform: [{ scale }] }]}
+      >
+        {isGradient ? (
+          <LinearGradient
+            colors={gradientColors[variant]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            {content}
+          </LinearGradient>
+        ) : (
+          content
+        )}
+      </Animated.View>
+    </Pressable>
   );
 }
 
@@ -207,6 +232,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconText: {
+    marginRight: spacing.xs,
+  },
+  spinner: {
     marginRight: spacing.xs,
   },
   titleRow: {

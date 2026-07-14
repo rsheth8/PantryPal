@@ -1,14 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
 import { User } from '../types';
 import { isDevMode, getCurrentDevUser, initializeDevUser } from '../config/dev';
+import { logger } from '../utils/logger';
 
-import { SUPABASE_CONFIG } from '../config/supabase';
-
-const SUPABASE_URL = SUPABASE_CONFIG.URL;
-const SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase } from '../config/supabase';
 
 export interface AuthUser {
   id: string;
@@ -32,7 +27,7 @@ class AuthService {
 
   async initialize(): Promise<void> {
     if (isDevMode()) {
-      console.log('DEV MODE: Automatically authenticating');
+      logger.debug('DEV MODE: Automatically authenticating');
       await initializeDevUser(); // Initialize dev user from storage
       return;
     }
@@ -43,7 +38,7 @@ class AuthService {
         this.currentUser = session;
       }
     } catch (error) {
-      console.error('Auth initialization error:', error);
+      logger.error('Auth initialization error:', error);
     }
   }
 
@@ -75,7 +70,7 @@ class AuthService {
 
       return authUser;
     } catch (error) {
-      console.error('Email sign-in error:', error);
+      logger.error('Email sign-in error:', error);
       throw error;
     }
   }
@@ -114,7 +109,7 @@ class AuthService {
 
       return authUser;
     } catch (error) {
-      console.error('Sign-up error:', error);
+      logger.error('Sign-up error:', error);
       throw error;
     }
   }
@@ -128,14 +123,14 @@ class AuthService {
       await AsyncStorage.removeItem('auth_session');
       this.currentUser = null;
     } catch (error) {
-      console.error('Sign-out error:', error);
+      logger.error('Sign-out error:', error);
       throw error;
     }
   }
 
   async getCurrentUser(): Promise<AuthUser | null> {
     if (isDevMode()) {
-      console.log('DEV MODE: Returning test user');
+      logger.debug('DEV MODE: Returning test user');
       const devUser = getCurrentDevUser();
       return {
         id: devUser.id,
@@ -166,14 +161,14 @@ class AuthService {
       this.currentUser = authUser;
       return authUser;
     } catch (error) {
-      console.error('Error getting current user:', error);
+      logger.error('Error getting current user:', error);
       return null;
     }
   }
 
   async isAuthenticated(): Promise<boolean> {
     if (isDevMode()) {
-      console.log('DEV MODE: Bypassing authentication');
+      logger.debug('DEV MODE: Bypassing authentication');
       return true;
     }
     try {
@@ -182,7 +177,7 @@ class AuthService {
       } = await supabase.auth.getSession();
       return session !== null;
     } catch (error) {
-      console.error('Auth check error:', error);
+      logger.error('Auth check error:', error);
       return false;
     }
   }
@@ -201,7 +196,7 @@ class AuthService {
     try {
       await AsyncStorage.setItem('auth_session', JSON.stringify(user));
     } catch (error) {
-      console.error('Error storing session:', error);
+      logger.error('Error storing session:', error);
     }
   }
 
@@ -210,7 +205,7 @@ class AuthService {
       const session = await AsyncStorage.getItem('auth_session');
       return session ? JSON.parse(session) : null;
     } catch (error) {
-      console.error('Error getting stored session:', error);
+      logger.error('Error getting stored session:', error);
       return null;
     }
   }

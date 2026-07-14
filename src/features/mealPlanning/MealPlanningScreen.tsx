@@ -4,859 +4,640 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
   Switch,
-  TextInput,
-  Alert,
-  Modal,
+  TouchableOpacity,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
-import {
-  mealPlanningService,
-  MealPlanningOptions,
-} from '../../services/mealPlanningService';
 import {
   enhancedMealPlanningService,
   EnhancedMealPlanningOptions,
 } from '../../services/enhancedMealPlanningService';
+import { mealPlanningService } from '../../services/mealPlanningService';
 import { MealPlan, DietaryPreferences } from '../../types';
+import PantryHeader from '../../components/PantryHeader';
+import PantryCard from '../../components/PantryCard';
+import PantryButton from '../../components/PantryButton';
+import {
+  FadeSlideIn,
+  EmptyState,
+  Skeleton,
+  useToast,
+} from '../../components/ui';
+import { Theme } from '../../theme/themes';
+import { useThemedStyles, useTheme } from '../../theme/ThemeContext';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { haptics } from '../../utils/haptics';
+import { logger } from '../../utils/logger';
+
+const DAYS_OF_WEEK = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+] as const;
+
+const MEAL_SLOTS: {
+  key: 'breakfast' | 'lunch' | 'dinner';
+  label: string;
+  icon: string;
+}[] = [
+  { key: 'breakfast', label: 'Breakfast', icon: '🌅' },
+  { key: 'lunch', label: 'Lunch', icon: '🌞' },
+  { key: 'dinner', label: 'Dinner', icon: '🌙' },
+];
+
+const DIET_OPTIONS = [
+  'vegetarian',
+  'vegan',
+  'gluten-free',
+  'dairy-free',
+  'keto',
+  'paleo',
+];
+
+const CUISINE_OPTIONS = [
+  'italian',
+  'mexican',
+  'asian',
+  'mediterranean',
+  'indian',
+  'american',
+];
 
 export default function MealPlanningScreen() {
+  const styles = useThemedStyles(createStyles);
+  const { theme } = useTheme();
+  const { showToast } = useToast();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const navigation = useNavigation<any>();
   const { recipes, pantry, currentUser, currentHousehold } =
     useMultiUserStore();
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentMealPlan, setCurrentMealPlan] = useState<MealPlan | null>(null);
-  const [mealPlanningResults, setMealPlanningResults] = useState<{
-    tierUsed: number;
-    relaxations: string[];
-    warnings: string[];
-    success: boolean;
-  } | null>(null);
-  const [isPreferencesModalVisible, setIsPreferencesModalVisible] =
-    useState(false);
+  const [saved, setSaved] = useState(false);
 
-  // Meal planning options
-  const [planningOptions, setPlanningOptions] = useState<MealPlanningOptions>({
-    includeBreakfast: true,
-    includeLunch: true,
-    includeDinner: true,
-    includeSnacks: false,
-    servingsPerMeal: 2,
-    maxPrepTime: 30,
-    maxCookTime: 60,
-    exploreNewRecipes: true,
-  });
+  const [includeBreakfast, setIncludeBreakfast] = useState(true);
+  const [includeLunch, setIncludeLunch] = useState(true);
+  const [includeDinner, setIncludeDinner] = useState(true);
+  const [includeSnacks, setIncludeSnacks] = useState(false);
+  const [exploreNew, setExploreNew] = useState(true);
+  const [servings, setServings] = useState(2);
 
-  // Enhanced dietary preferences
-  const [dietaryPreferences] = useState<DietaryPreferences>({
-    userId: currentUser?.id || '',
+  const [selectedDiets, setSelectedDiets] = useState<string[]>([]);
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
 
-    // SACRED - Never relaxed
-    diets: [],
-    allergens: [],
-    medicalRestrictions: [],
+  const toggleInList = (
+    value: string,
+    list: string[],
+    setter: (next: string[]) => void
+  ) => {
+    haptics.selection();
+    setter(
+      list.includes(value) ? list.filter(v => v !== value) : [...list, value]
+    );
+  };
 
-    // FLEXIBLE - Can be relaxed
-    cuisines: [],
-    difficulty: 'any',
-    maxPrepTime: 30,
-    maxCookTime: 60,
-
-    // Nutrition Goals
-    nutritionGoals: {
-      dailyCalories: 2000,
-      proteinPercentage: 25,
-      carbsPercentage: 45,
-      fatPercentage: 30,
-      maxFiber: 30,
-      maxSugar: 50,
-      maxSodium: 2300,
-    },
-
-    // Lifestyle Preferences
-    lifestyle: {
-      familySize: 2,
-      budget: 'moderate',
-      mealFrequency: 3,
-      prepStyle: 'any',
-      skillLevel: 'intermediate',
-    },
-
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-
-  const handleGenerateMealPlan = async () => {
+  const handleGenerate = async () => {
     if (!currentUser) {
-      Alert.alert('Error', 'Please log in to generate a meal plan.');
+      showToast('Please log in to generate a meal plan', { type: 'warning' });
       return;
     }
-
     if (recipes.length === 0) {
-      Alert.alert(
-        'No Recipes',
-        'Add some recipes first to generate a meal plan.'
-      );
+      showToast('Add some recipes first — try the Discover tab', {
+        type: 'warning',
+      });
       return;
     }
 
     setIsGenerating(true);
-    try {
-      // Create the enhanced meal planning options
-      const enhancedOptions: EnhancedMealPlanningOptions = {
-        includeBreakfast: planningOptions.includeBreakfast,
-        includeLunch: planningOptions.includeLunch,
-        includeDinner: planningOptions.includeDinner,
-        includeSnacks: planningOptions.includeSnacks,
-        servingsPerMeal: planningOptions.servingsPerMeal,
-        maxPrepTime: planningOptions.maxPrepTime || 30,
-        maxCookTime: planningOptions.maxCookTime || 60,
-        exploreNewRecipes: planningOptions.exploreNewRecipes || true,
-        dietaryPreferences,
-      };
+    setSaved(false);
+    haptics.medium();
 
+    const dietaryPreferences: DietaryPreferences = {
+      userId: currentUser.id,
+      diets: selectedDiets,
+      allergens: [],
+      medicalRestrictions: [],
+      cuisines: selectedCuisines,
+      difficulty: 'any',
+      maxPrepTime: 30,
+      maxCookTime: 60,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const options: EnhancedMealPlanningOptions = {
+      includeBreakfast,
+      includeLunch,
+      includeDinner,
+      includeSnacks,
+      servingsPerMeal: servings,
+      maxPrepTime: 30,
+      maxCookTime: 60,
+      exploreNewRecipes: exploreNew,
+      dietaryPreferences,
+    };
+
+    try {
       const result = await enhancedMealPlanningService.generateMealPlan(
         recipes,
         pantry,
-        enhancedOptions,
+        options,
         currentUser.id,
         currentHousehold?.id
       );
-
       setCurrentMealPlan(result.mealPlan);
-      setMealPlanningResults({
-        tierUsed: result.tierUsed,
-        relaxations: result.relaxations,
-        warnings: result.warnings,
-        success: result.success,
-      });
-
-      // Show results to user
-      let message = `Meal plan generated successfully!\n\n`;
-      message += `Tier used: ${result.tierUsed}\n`;
-      message += `Success: ${result.success ? 'Yes' : 'No'}\n`;
-
-      if (result.relaxations.length > 0) {
-        message += `\nRelaxations:\n${result.relaxations.join('\n')}`;
-      }
-
       if (result.warnings.length > 0) {
-        message += `\n\nWarnings:\n${result.warnings.join('\n')}`;
+        showToast(result.warnings[0], { type: 'info' });
+      } else {
+        showToast('Your week is planned! 🍽️', { type: 'success' });
       }
-
-      Alert.alert('Enhanced Meal Planning Results', message);
     } catch (error) {
-      console.error('Error generating meal plan:', error);
-      Alert.alert('Error', 'Failed to generate meal plan. Please try again.');
+      logger.error('Error generating meal plan:', error);
+      showToast('Could not generate meal plan — try again', { type: 'error' });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleSaveMealPlan = async () => {
+  const handleSave = async () => {
     if (!currentMealPlan) return;
-
     try {
       await mealPlanningService.saveMealPlan(currentMealPlan);
-      Alert.alert('Success', 'Meal plan saved successfully!');
+      setSaved(true);
+      haptics.success();
+      showToast('Meal plan saved', { type: 'success' });
     } catch (error) {
-      Alert.alert('Error', 'Failed to save meal plan.');
+      logger.error('Error saving meal plan:', error);
+      showToast('Could not save meal plan', { type: 'error' });
     }
   };
 
-  const renderMealPlan = () => {
-    if (!currentMealPlan) return null;
-
-    const daysOfWeek = [
-      'monday',
-      'tuesday',
-      'wednesday',
-      'thursday',
-      'friday',
-      'saturday',
-      'sunday',
-    ];
-
-    return (
-      <View style={styles.mealPlanContainer}>
-        <Text style={styles.sectionTitle}>Your Meal Plan</Text>
-
-        {/* Nutrition Summary */}
-        {currentMealPlan.totalNutrition && (
-          <View style={styles.nutritionSummary}>
-            <Text style={styles.nutritionTitle}>Weekly Nutrition Summary</Text>
-            <View style={styles.nutritionGrid}>
-              <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>
-                  {currentMealPlan.totalNutrition.calories}
-                </Text>
-                <Text style={styles.nutritionLabel}>Calories</Text>
-              </View>
-              <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>
-                  {currentMealPlan.totalNutrition.protein}g
-                </Text>
-                <Text style={styles.nutritionLabel}>Protein</Text>
-              </View>
-              <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>
-                  {currentMealPlan.totalNutrition.carbs}g
-                </Text>
-                <Text style={styles.nutritionLabel}>Carbs</Text>
-              </View>
-              <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>
-                  {currentMealPlan.totalNutrition.fat}g
-                </Text>
-                <Text style={styles.nutritionLabel}>Fat</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Daily Meals */}
-        {daysOfWeek.map(day => {
-          const dayMeals = currentMealPlan.meals[day];
-          if (!dayMeals) return null;
-
-          return (
-            <View key={day} style={styles.dayContainer}>
-              <Text style={styles.dayTitle}>
-                {day.charAt(0).toUpperCase() + day.slice(1)}
-              </Text>
-
-              {dayMeals.breakfast && (
-                <View style={styles.mealItem}>
-                  <Text style={styles.mealType}>🌅 Breakfast</Text>
-                  <Text style={styles.mealTitle}>
-                    {dayMeals.breakfast.recipeTitle}
-                  </Text>
-                  <Text style={styles.mealServings}>
-                    {dayMeals.breakfast.servings} servings
-                  </Text>
-                  {dayMeals.breakfast.nutrition && (
-                    <Text style={styles.mealNutrition}>
-                      {dayMeals.breakfast.nutrition.calories} cal |{' '}
-                      {dayMeals.breakfast.nutrition.protein}g protein
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {dayMeals.lunch && (
-                <View style={styles.mealItem}>
-                  <Text style={styles.mealType}>🌞 Lunch</Text>
-                  <Text style={styles.mealTitle}>
-                    {dayMeals.lunch.recipeTitle}
-                  </Text>
-                  <Text style={styles.mealServings}>
-                    {dayMeals.lunch.servings} servings
-                  </Text>
-                  {dayMeals.lunch.nutrition && (
-                    <Text style={styles.mealNutrition}>
-                      {dayMeals.lunch.nutrition.calories} cal |{' '}
-                      {dayMeals.lunch.nutrition.protein}g protein
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {dayMeals.dinner && (
-                <View style={styles.mealItem}>
-                  <Text style={styles.mealType}>🌙 Dinner</Text>
-                  <Text style={styles.mealTitle}>
-                    {dayMeals.dinner.recipeTitle}
-                  </Text>
-                  <Text style={styles.mealServings}>
-                    {dayMeals.dinner.servings} servings
-                  </Text>
-                  {dayMeals.dinner.nutrition && (
-                    <Text style={styles.mealNutrition}>
-                      {dayMeals.dinner.nutrition.calories} cal |{' '}
-                      {dayMeals.dinner.nutrition.protein}g protein
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {dayMeals.snacks && dayMeals.snacks.length > 0 && (
-                <View style={styles.mealItem}>
-                  <Text style={styles.mealType}>🍎 Snacks</Text>
-                  {dayMeals.snacks.map((snack, index) => (
-                    <Text key={index} style={styles.mealTitle}>
-                      {snack.recipeTitle}
-                    </Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          );
-        })}
-      </View>
-    );
-  };
-
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Meal Planning</Text>
-        <Text style={styles.subtitle}>Plan your weekly meals</Text>
+    <View style={styles.container}>
+      <PantryHeader
+        title='Meal Planning'
+        subtitle='Plan a delicious week'
+        gradient='sunset'
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+      />
 
-        {/* Planning Options */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Planning Options</Text>
-
-          <View style={styles.optionItem}>
-            <Text style={styles.optionLabel}>Include Breakfast</Text>
-            <Switch
-              value={planningOptions.includeBreakfast}
-              onValueChange={value =>
-                setPlanningOptions({
-                  ...planningOptions,
-                  includeBreakfast: value,
-                })
-              }
-            />
-          </View>
-
-          <View style={styles.optionItem}>
-            <Text style={styles.optionLabel}>Include Lunch</Text>
-            <Switch
-              value={planningOptions.includeLunch}
-              onValueChange={value =>
-                setPlanningOptions({ ...planningOptions, includeLunch: value })
-              }
-            />
-          </View>
-
-          <View style={styles.optionItem}>
-            <Text style={styles.optionLabel}>Include Dinner</Text>
-            <Switch
-              value={planningOptions.includeDinner}
-              onValueChange={value =>
-                setPlanningOptions({ ...planningOptions, includeDinner: value })
-              }
-            />
-          </View>
-
-          <View style={styles.optionItem}>
-            <Text style={styles.optionLabel}>Include Snacks</Text>
-            <Switch
-              value={planningOptions.includeSnacks}
-              onValueChange={value =>
-                setPlanningOptions({ ...planningOptions, includeSnacks: value })
-              }
-            />
-          </View>
-
-          <View style={styles.optionItem}>
-            <Text style={styles.optionLabel}>Servings per Meal</Text>
-            <TextInput
-              style={styles.numberInput}
-              value={planningOptions.servingsPerMeal.toString()}
-              onChangeText={text =>
-                setPlanningOptions({
-                  ...planningOptions,
-                  servingsPerMeal: parseInt(text) || 2,
-                })
-              }
-              keyboardType='numeric'
-            />
-          </View>
-
-          <View style={styles.optionItem}>
-            <Text style={styles.optionLabel}>Explore New Recipes</Text>
-            <Switch
-              value={planningOptions.exploreNewRecipes}
-              onValueChange={value =>
-                setPlanningOptions({
-                  ...planningOptions,
-                  exploreNewRecipes: value,
-                })
-              }
-            />
-          </View>
-
-          <View style={styles.exploreInfo}>
-            <Text style={styles.exploreInfoText}>
-              🌍 Discover new cuisines and recipes from around the world, even
-              if you don&apos;t have all the ingredients yet!
-            </Text>
-          </View>
-        </View>
-
-        {/* Enhanced Preferences Button */}
-        <TouchableOpacity
-          style={styles.enhancedPreferencesButton}
-          onPress={() => {
-            setIsPreferencesModalVisible(true);
-          }}
-        >
-          <Text style={styles.enhancedPreferencesButtonText}>
-            ⚙️ Enhanced Preferences
-          </Text>
-        </TouchableOpacity>
-
-        {/* Current Preferences Summary */}
-        <View style={styles.preferencesSummary}>
-          <Text style={styles.preferencesTitle}>📋 Current Preferences:</Text>
-          <Text style={styles.preferencesText}>
-            Diets:{' '}
-            {dietaryPreferences.diets.length > 0
-              ? dietaryPreferences.diets.join(', ')
-              : 'None'}
-          </Text>
-          <Text style={styles.preferencesText}>
-            Allergens:{' '}
-            {dietaryPreferences.allergens.length > 0
-              ? dietaryPreferences.allergens.join(', ')
-              : 'None'}
-          </Text>
-          <Text style={styles.preferencesText}>
-            Cuisines:{' '}
-            {dietaryPreferences.cuisines.length > 0
-              ? dietaryPreferences.cuisines.join(', ')
-              : 'None'}
-          </Text>
-          <Text style={styles.preferencesText}>
-            Difficulty: {dietaryPreferences.difficulty}
-          </Text>
-          {dietaryPreferences.nutritionGoals?.dailyCalories && (
-            <Text style={styles.preferencesText}>
-              Calories: {dietaryPreferences.nutritionGoals.dailyCalories}
-            </Text>
-          )}
-        </View>
-
-        {/* Dietary Preferences */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Dietary Preferences</Text>
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setIsPreferencesModalVisible(true)}
-            >
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.preferencesSummary}>
-            <Text style={styles.preferenceText}>
-              Diets:{' '}
-              {dietaryPreferences.diets.length > 0
-                ? dietaryPreferences.diets.join(', ')
-                : 'None'}
-            </Text>
-            <Text style={styles.preferenceText}>
-              Allergens:{' '}
-              {dietaryPreferences.allergens.length > 0
-                ? dietaryPreferences.allergens.join(', ')
-                : 'None'}
-            </Text>
-            <Text style={styles.preferenceText}>
-              Cuisines:{' '}
-              {dietaryPreferences.cuisines.length > 0
-                ? dietaryPreferences.cuisines.join(', ')
-                : 'Any'}
-            </Text>
-          </View>
-        </View>
-
-        {/* Generate Meal Plan */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.generateButton}
-            onPress={handleGenerateMealPlan}
-            disabled={isGenerating}
-          >
-            <Text style={styles.generateButtonText}>
-              {isGenerating ? '🔄 Generating...' : '�� Generate Meal Plan'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Preferences Modal - Coming Soon */}
-        <Modal
-          visible={isPreferencesModalVisible}
-          animationType='slide'
-          presentationStyle='pageSheet'
-        >
-          <View style={styles.container}>
-            <View style={styles.header}>
-              <Text style={styles.title}>Dietary Preferences</Text>
-              <Text style={styles.subtitle}>
-                Enhanced preferences modal coming soon!
-              </Text>
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={() => setIsPreferencesModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* Test Simple Modal - Commented out */}
-        {/*
-        <Modal
-          visible={isPreferencesModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setIsPreferencesModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Test Preferences Modal</Text>
-              <Text>Modal is working! Current preferences:</Text>
-              <Text>Diets: {dietaryPreferences.diets.join(', ') || 'None'}</Text>
-              <Text>Allergens: {dietaryPreferences.allergens.join(', ') || 'None'}</Text>
-              <Text>Cuisines: {dietaryPreferences.cuisines.join(', ') || 'None'}</Text>
-              
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={() => setIsPreferencesModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-        */}
-
-        {/* Meal Plan Display */}
-        {renderMealPlan()}
-
-        {/* Save Meal Plan */}
-        {currentMealPlan && (
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSaveMealPlan}
-            >
-              <Text style={styles.saveButtonText}>Save Meal Plan</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Meal Planning Results */}
-        {mealPlanningResults && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📊 Meal Planning Results</Text>
-            <View style={styles.resultsContainer}>
-              <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>Tier Used:</Text>
-                <Text style={styles.resultValue}>
-                  {mealPlanningResults.tierUsed}
-                </Text>
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Meal selection */}
+        <FadeSlideIn>
+          <PantryCard variant='elevated' padding='lg'>
+            <Text style={styles.sectionTitle}>🍴 Which meals?</Text>
+            {(
+              [
+                ['Breakfast', includeBreakfast, setIncludeBreakfast],
+                ['Lunch', includeLunch, setIncludeLunch],
+                ['Dinner', includeDinner, setIncludeDinner],
+                ['Snacks', includeSnacks, setIncludeSnacks],
+              ] as const
+            ).map(([label, value, setter]) => (
+              <View key={label} style={styles.optionRow}>
+                <Text style={styles.optionLabel}>{label}</Text>
+                <Switch
+                  value={value}
+                  onValueChange={next => {
+                    haptics.selection();
+                    setter(next);
+                  }}
+                  trackColor={{
+                    false: theme.colors.surfaceMuted,
+                    true: theme.palette.primary[300],
+                  }}
+                  thumbColor={
+                    value
+                      ? theme.palette.primary[600]
+                      : theme.colors.borderStrong
+                  }
+                />
               </View>
-              <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>Success:</Text>
-                <Text
-                  style={[
-                    styles.resultValue,
-                    {
-                      color: mealPlanningResults.success
-                        ? '#28a745'
-                        : '#dc3545',
-                    },
-                  ]}
+            ))}
+
+            <View style={styles.optionRow}>
+              <Text style={styles.optionLabel}>Servings per meal</Text>
+              <View style={styles.stepper}>
+                <TouchableOpacity
+                  style={styles.stepperButton}
+                  onPress={() => {
+                    haptics.selection();
+                    setServings(s => Math.max(1, s - 1));
+                  }}
                 >
-                  {mealPlanningResults.success ? 'Yes' : 'No'}
+                  <Text style={styles.stepperButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.stepperValue}>{servings}</Text>
+                <TouchableOpacity
+                  style={styles.stepperButton}
+                  onPress={() => {
+                    haptics.selection();
+                    setServings(s => Math.min(12, s + 1));
+                  }}
+                >
+                  <Text style={styles.stepperButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.optionRow}>
+              <View style={styles.optionTextBox}>
+                <Text style={styles.optionLabel}>Explore new recipes</Text>
+                <Text style={styles.optionSubtitle}>
+                  Discover meals beyond your saved collection
                 </Text>
               </View>
-
-              {mealPlanningResults.relaxations.length > 0 && (
-                <View style={styles.resultSection}>
-                  <Text style={styles.resultSubtitle}>🔄 Relaxations:</Text>
-                  {mealPlanningResults.relaxations.map((relaxation, index) => (
-                    <Text key={index} style={styles.resultItem}>
-                      • {relaxation}
-                    </Text>
-                  ))}
-                </View>
-              )}
-
-              {mealPlanningResults.warnings.length > 0 && (
-                <View style={styles.resultSection}>
-                  <Text style={styles.resultSubtitle}>⚠️ Warnings:</Text>
-                  {mealPlanningResults.warnings.map((warning, index) => (
-                    <Text key={index} style={styles.resultItem}>
-                      • {warning}
-                    </Text>
-                  ))}
-                </View>
-              )}
+              <Switch
+                value={exploreNew}
+                onValueChange={next => {
+                  haptics.selection();
+                  setExploreNew(next);
+                }}
+                trackColor={{
+                  false: theme.colors.surfaceMuted,
+                  true: theme.palette.primary[300],
+                }}
+                thumbColor={
+                  exploreNew
+                    ? theme.palette.primary[600]
+                    : theme.colors.borderStrong
+                }
+              />
             </View>
+          </PantryCard>
+        </FadeSlideIn>
+
+        {/* Dietary preferences */}
+        <FadeSlideIn delay={80}>
+          <PantryCard variant='fresh' padding='lg'>
+            <Text style={styles.sectionTitle}>🥗 Diets</Text>
+            <View style={styles.chipWrap}>
+              {DIET_OPTIONS.map(diet => {
+                const active = selectedDiets.includes(diet);
+                return (
+                  <TouchableOpacity
+                    key={diet}
+                    style={[styles.chip, active && styles.chipActive]}
+                    onPress={() =>
+                      toggleInList(diet, selectedDiets, setSelectedDiets)
+                    }
+                  >
+                    <Text
+                      style={[styles.chipText, active && styles.chipTextActive]}
+                    >
+                      {diet}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={[styles.sectionTitle, styles.subheading]}>
+              🌍 Preferred cuisines
+            </Text>
+            <View style={styles.chipWrap}>
+              {CUISINE_OPTIONS.map(cuisine => {
+                const active = selectedCuisines.includes(cuisine);
+                return (
+                  <TouchableOpacity
+                    key={cuisine}
+                    style={[styles.chip, active && styles.chipActive]}
+                    onPress={() =>
+                      toggleInList(
+                        cuisine,
+                        selectedCuisines,
+                        setSelectedCuisines
+                      )
+                    }
+                  >
+                    <Text
+                      style={[styles.chipText, active && styles.chipTextActive]}
+                    >
+                      {cuisine}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </PantryCard>
+        </FadeSlideIn>
+
+        {/* Generate */}
+        <FadeSlideIn delay={140}>
+          <PantryButton
+            title={
+              isGenerating ? 'Generating your week...' : 'Generate Meal Plan'
+            }
+            onPress={handleGenerate}
+            variant='primary'
+            size='lg'
+            loading={isGenerating}
+            icon={isGenerating ? undefined : '✨'}
+            fullWidth
+          />
+        </FadeSlideIn>
+
+        {/* Loading skeletons */}
+        {isGenerating && (
+          <View style={styles.skeletonWrap}>
+            {[0, 1, 2].map(i => (
+              <View key={i} style={styles.skeletonCard}>
+                <Skeleton height={18} width='40%' />
+                <Skeleton height={14} width='80%' style={styles.skeletonGap} />
+                <Skeleton height={14} width='60%' style={styles.skeletonGap} />
+              </View>
+            ))}
           </View>
         )}
-      </View>
-    </ScrollView>
+
+        {/* Result */}
+        {!isGenerating && currentMealPlan && (
+          <MealPlanView
+            mealPlan={currentMealPlan}
+            styles={styles}
+            onSave={handleSave}
+            saved={saved}
+          />
+        )}
+
+        {/* Empty state */}
+        {!isGenerating && !currentMealPlan && (
+          <EmptyState
+            emoji='🗓️'
+            title='No meal plan yet'
+            message='Pick your meals and preferences above, then generate a personalized week of meals.'
+          />
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#f5f5f5',
-    flex: 1,
-  },
-  dayContainer: {
-    marginBottom: 20,
-  },
-  dayTitle: {
-    color: '#333',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  editButton: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  enhancedPreferencesButton: {
-    alignItems: 'center',
-    backgroundColor: '#6f42c1',
-    borderRadius: 8,
-    marginBottom: 12,
-    paddingVertical: 16,
-  },
-  enhancedPreferencesButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  exploreInfo: {
-    backgroundColor: '#e0f7fa',
-    borderRadius: 8,
-    marginTop: 12,
-    padding: 12,
-  },
-  exploreInfoText: {
-    color: '#00796b',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  generateButton: {
-    alignItems: 'center',
-    backgroundColor: '#2196F3',
-    borderRadius: 8,
-    paddingVertical: 16,
-  },
-  generateButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  header: {
-    backgroundColor: '#fff',
-    borderBottomColor: '#e0e0e0',
-    borderBottomWidth: 1,
-    padding: 16,
-  },
-  mealItem: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    marginBottom: 8,
-    padding: 12,
-  },
-  mealNutrition: {
-    color: '#555',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  mealPlanContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    elevation: 3,
-    margin: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  mealServings: {
-    color: '#666',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  mealTitle: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  mealType: {
-    color: '#666',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  modalButton: {
-    alignItems: 'center',
-    borderRadius: 8,
-    flex: 1,
-    paddingVertical: 12,
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  numberInput: {
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 8,
-    textAlign: 'center',
-    width: 60,
-  },
-  nutritionGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  nutritionItem: {
-    alignItems: 'center',
-  },
-  nutritionLabel: {
-    color: '#666',
-    fontSize: 12,
-  },
-  nutritionSummary: {
-    marginBottom: 20,
-  },
-  nutritionTitle: {
-    color: '#333',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  nutritionValue: {
-    color: '#4CAF50',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  optionItem: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-  },
-  optionLabel: {
-    color: '#333',
-    fontSize: 16,
-  },
-  preferenceText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  preferencesSummary: {
-    backgroundColor: '#f8f9fa',
-    borderColor: '#e9ecef',
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 16,
-    padding: 16,
-  },
-  preferencesText: {
-    color: '#666',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  preferencesTitle: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  resultItem: {
-    color: '#666',
-    fontSize: 12,
-    marginBottom: 2,
-    marginLeft: 8,
-  },
-  resultLabel: {
-    color: '#333',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  resultRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  resultSection: {
-    marginTop: 12,
-  },
-  resultSubtitle: {
-    color: '#333',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  resultValue: {
-    color: '#007bff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  resultsContainer: {
-    backgroundColor: '#f8f9fa',
-    borderColor: '#e9ecef',
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 12,
-  },
-  saveButton: {
-    alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    borderRadius: 8,
-    paddingVertical: 16,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    elevation: 3,
-    margin: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  sectionHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    color: '#333',
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  subtitle: {
-    color: '#666',
-    fontSize: 16,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  title: {
-    color: '#333',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-});
+function MealPlanView({
+  mealPlan,
+  styles,
+  onSave,
+  saved,
+}: {
+  mealPlan: MealPlan;
+  styles: ReturnType<typeof createStyles>;
+  onSave: () => void;
+  saved: boolean;
+}) {
+  return (
+    <View>
+      {mealPlan.totalNutrition && (
+        <FadeSlideIn>
+          <PantryCard variant='warm' padding='lg'>
+            <Text style={styles.sectionTitle}>📊 Weekly Nutrition</Text>
+            <View style={styles.nutritionGrid}>
+              {[
+                ['Calories', `${Math.round(mealPlan.totalNutrition.calories)}`],
+                ['Protein', `${Math.round(mealPlan.totalNutrition.protein)}g`],
+                ['Carbs', `${Math.round(mealPlan.totalNutrition.carbs)}g`],
+                ['Fat', `${Math.round(mealPlan.totalNutrition.fat)}g`],
+              ].map(([label, value]) => (
+                <View key={label} style={styles.nutritionItem}>
+                  <Text style={styles.nutritionValue}>{value}</Text>
+                  <Text style={styles.nutritionLabel}>{label}</Text>
+                </View>
+              ))}
+            </View>
+          </PantryCard>
+        </FadeSlideIn>
+      )}
+
+      {DAYS_OF_WEEK.map((day, index) => {
+        const dayMeals = mealPlan.meals[day];
+        if (!dayMeals) return null;
+        const hasAnyMeal =
+          dayMeals.breakfast ||
+          dayMeals.lunch ||
+          dayMeals.dinner ||
+          (dayMeals.snacks && dayMeals.snacks.length > 0);
+        if (!hasAnyMeal) return null;
+
+        return (
+          <FadeSlideIn key={day} delay={Math.min(index, 6) * 60}>
+            <PantryCard variant='default' padding='lg'>
+              <Text style={styles.dayTitle}>
+                {day.charAt(0).toUpperCase() + day.slice(1)}
+              </Text>
+              {MEAL_SLOTS.map(slot => {
+                const meal = dayMeals[slot.key];
+                if (!meal) return null;
+                return (
+                  <View key={slot.key} style={styles.mealRow}>
+                    <Text style={styles.mealIcon}>{slot.icon}</Text>
+                    <View style={styles.mealInfo}>
+                      <Text style={styles.mealTitle} numberOfLines={2}>
+                        {meal.recipeTitle}
+                      </Text>
+                      <Text style={styles.mealMeta}>
+                        {meal.servings} serving
+                        {meal.servings === 1 ? '' : 's'}
+                        {meal.nutrition
+                          ? ` · ${Math.round(meal.nutrition.calories)} cal`
+                          : ''}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+              {dayMeals.snacks && dayMeals.snacks.length > 0 && (
+                <View style={styles.mealRow}>
+                  <Text style={styles.mealIcon}>🍎</Text>
+                  <View style={styles.mealInfo}>
+                    <Text style={styles.mealTitle}>
+                      {dayMeals.snacks.map(s => s.recipeTitle).join(', ')}
+                    </Text>
+                    <Text style={styles.mealMeta}>Snacks</Text>
+                  </View>
+                </View>
+              )}
+            </PantryCard>
+          </FadeSlideIn>
+        );
+      })}
+
+      <PantryButton
+        title={saved ? '✓ Saved' : 'Save Meal Plan'}
+        onPress={onSave}
+        variant={saved ? 'success' : 'secondary'}
+        size='lg'
+        disabled={saved}
+        fullWidth
+        style={styles.saveButton}
+      />
+    </View>
+  );
+}
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    chip: {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.pill,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs + 2,
+    },
+    chipActive: {
+      backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
+    },
+    chipText: {
+      ...typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+      textTransform: 'capitalize',
+    },
+    chipTextActive: {
+      color: '#fff',
+    },
+    chipWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+    },
+    container: {
+      backgroundColor: theme.colors.background,
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+    },
+    dayTitle: {
+      ...typography.h4,
+      color: theme.colors.primary,
+      marginBottom: spacing.sm,
+    },
+    mealIcon: {
+      fontSize: 22,
+      marginRight: spacing.sm,
+    },
+    mealInfo: {
+      flex: 1,
+    },
+    mealMeta: {
+      ...typography.caption,
+      color: theme.colors.textMuted,
+    },
+    mealRow: {
+      alignItems: 'center',
+      borderTopColor: theme.colors.divider,
+      borderTopWidth: 1,
+      flexDirection: 'row',
+      paddingVertical: spacing.sm,
+    },
+    mealTitle: {
+      ...typography.body,
+      color: theme.colors.text,
+      fontWeight: '600',
+    },
+    nutritionGrid: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    },
+    nutritionItem: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    nutritionLabel: {
+      ...typography.caption,
+      color: theme.colors.textMuted,
+    },
+    nutritionValue: {
+      ...typography.h4,
+      color: theme.colors.text,
+      fontWeight: '700',
+    },
+    optionLabel: {
+      ...typography.body,
+      color: theme.colors.text,
+      fontWeight: '500',
+    },
+    optionRow: {
+      alignItems: 'center',
+      borderTopColor: theme.colors.divider,
+      borderTopWidth: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingVertical: spacing.sm,
+    },
+    optionSubtitle: {
+      ...typography.caption,
+      color: theme.colors.textMuted,
+    },
+    optionTextBox: {
+      flex: 1,
+      marginRight: spacing.md,
+    },
+    saveButton: {
+      marginTop: spacing.md,
+    },
+    scrollContent: {
+      padding: spacing.md,
+      paddingBottom: spacing.xxl,
+    },
+    sectionTitle: {
+      ...typography.h4,
+      color: theme.colors.text,
+      marginBottom: spacing.sm,
+    },
+    skeletonCard: {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.card,
+      borderWidth: 1,
+      marginBottom: spacing.sm,
+      padding: spacing.md,
+    },
+    skeletonGap: {
+      marginTop: spacing.sm,
+    },
+    skeletonWrap: {
+      marginTop: spacing.md,
+    },
+    stepper: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.backgroundSubtle,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.pill,
+      borderWidth: 1,
+      flexDirection: 'row',
+    },
+    stepperButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 32,
+      width: 34,
+    },
+    stepperButtonText: {
+      color: theme.colors.textSecondary,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    stepperValue: {
+      ...typography.body,
+      color: theme.colors.primary,
+      fontWeight: '700',
+      minWidth: 28,
+      textAlign: 'center',
+    },
+    subheading: {
+      marginTop: spacing.lg,
+    },
+  });

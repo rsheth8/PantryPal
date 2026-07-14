@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Development Configuration
-// Set this to true to bypass authentication during testing
+//
+// Auth bypass is DOUBLE-gated: it requires a dev build (__DEV__) AND an
+// explicit opt-in via EXPO_PUBLIC_DEV_BYPASS_AUTH=true in your .env.
+// It is impossible to ship a build with auth bypassed.
 export const DEV_MODE = {
-  // Set to true to bypass login and automatically sign in
-  BYPASS_AUTH: true,
+  BYPASS_AUTH: __DEV__ && process.env.EXPO_PUBLIC_DEV_BYPASS_AUTH === 'true',
   // Test user for development
   TEST_USER: {
     email: 'user1@example.com',
@@ -12,7 +14,7 @@ export const DEV_MODE = {
     name: 'Rahil Sheth',
   },
   // Debug settings
-  DEBUG_LOGS: true,
+  DEBUG_LOGS: __DEV__,
   USE_MOCK_DATA: false,
 };
 
@@ -67,8 +69,8 @@ export const initializeDevUser = async () => {
     if (storedUserId) {
       currentDevUserId = storedUserId;
     }
-  } catch (error) {
-    console.log('DEV MODE: Error loading stored user ID, using default');
+  } catch {
+    // Non-fatal: fall back to the default dev user.
   }
 };
 

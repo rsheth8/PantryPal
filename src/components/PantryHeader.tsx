@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GradientBackground from './GradientBackground';
+import FadeSlideIn from './ui/FadeSlideIn';
 import { typography, spacing, shadows } from '../utils/designSystem';
 
 interface PantryHeaderProps {
@@ -38,8 +40,13 @@ export default function PantryHeader({
   rightAction,
   children,
 }: PantryHeaderProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <GradientBackground gradient={gradient} style={styles.container}>
+    <GradientBackground
+      gradient={gradient}
+      style={[styles.container, { paddingTop: insets.top + spacing.md }]}
+    >
       <View style={styles.content}>
         {/* Top row with back button and right action */}
         <View style={styles.topRow}>
@@ -53,10 +60,10 @@ export default function PantryHeader({
             </TouchableOpacity>
           )}
 
-          <View style={styles.titleContainer}>
+          <FadeSlideIn style={styles.titleContainer} offsetY={10}>
             <Text style={styles.title}>{title}</Text>
             {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-          </View>
+          </FadeSlideIn>
 
           {rightAction && (
             <TouchableOpacity
@@ -96,7 +103,6 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingBottom: spacing.lg,
-    paddingTop: spacing.xl + 20, // Account for status bar
     ...shadows.lg,
   },
   content: {

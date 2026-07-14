@@ -268,3 +268,138 @@ BEGIN
   RETURN result;
 END;
 $$ LANGUAGE plpgsql; 
+-- ============================================================
+-- Migration: recipe personalization columns (safe to re-run)
+-- ============================================================
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT false;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating BETWEEN 1 AND 5);
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard'));
+
+-- Helpful indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_grocery_items_added_by ON grocery_items(added_by);
+CREATE INDEX IF NOT EXISTS idx_grocery_items_household ON grocery_items(household_id);
+CREATE INDEX IF NOT EXISTS idx_grocery_items_expiration ON grocery_items(expiration_date);
+CREATE INDEX IF NOT EXISTS idx_shopping_list_added_by ON shopping_list_items(added_by);
+CREATE INDEX IF NOT EXISTS idx_shopping_list_household ON shopping_list_items(household_id);
+CREATE INDEX IF NOT EXISTS idx_recipes_created_by ON recipes(created_by);
+CREATE INDEX IF NOT EXISTS idx_recipes_household ON recipes(household_id);
+CREATE INDEX IF NOT EXISTS idx_users_household ON users(household_id);
+
+-- ============================================================
+-- Migration: meal plans, roles, invites & activity feed
+-- (idempotent — safe to re-run)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS meal_plans (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  household_id UUID REFERENCES households(id) ON DELETE CASCADE,
+  week_start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  meals JSONB NOT NULL DEFAULT '{}'::jsonb,
+  total_nutrition JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS member_roles (
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  household_id UUID REFERENCES households(id) ON DELETE CASCADE,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+  joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (user_id, household_id)
+);
+
+CREATE TABLE IF NOT EXISTS household_invites (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  household_id UUID REFERENCES households(id) ON DELETE CASCADE,
+  household_name TEXT,
+  invited_by UUID REFERENCES users(id) ON DELETE CASCADE,
+  invited_by_name TEXT,
+  invite_code TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'expired')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS household_activity (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  household_id UUID REFERENCES households(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_name TEXT,
+  action TEXT NOT NULL,
+  item_name TEXT,
+  metadata JSONB,
+  timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for the new tables
+CREATE INDEX IF NOT EXISTS idx_meal_plans_user ON meal_plans(user_id);
+CREATE INDEX IF NOT EXISTS idx_meal_plans_household ON meal_plans(household_id);
+CREATE INDEX IF NOT EXISTS idx_member_roles_household ON member_roles(household_id);
+CREATE INDEX IF NOT EXISTS idx_household_invites_code ON household_invites(invite_code);
+CREATE INDEX IF NOT EXISTS idx_household_activity_household ON household_activity(household_id);
+CREATE INDEX IF NOT EXISTS idx_household_activity_time ON household_activity(timestamp DESC);
+
+-- Row Level Security
+ALTER TABLE meal_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE member_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE household_invites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE household_activity ENABLE ROW LEVEL SECURITY;
+
+-- Meal plans: owner or household member can read/write their plans
+DROP POLICY IF EXISTS "meal_plans_owner_access" ON meal_plans;
+CREATE POLICY "meal_plans_owner_access" ON meal_plans
+  FOR ALL USING (
+    auth.uid() = user_id
+    OR household_id IN (
+      SELECT household_id FROM users WHERE id = auth.uid()
+    )
+  );
+
+-- Member roles: members of a household can read roles; users manage their own row
+DROP POLICY IF EXISTS "member_roles_read" ON member_roles;
+CREATE POLICY "member_roles_read" ON member_roles
+  FOR SELECT USING (
+    household_id IN (SELECT household_id FROM users WHERE id = auth.uid())
+  );
+DROP POLICY IF EXISTS "member_roles_self_write" ON member_roles;
+CREATE POLICY "member_roles_self_write" ON member_roles
+  FOR ALL USING (auth.uid() = user_id);
+
+-- Invites: readable by anyone with the code (for joining); creatable by members
+DROP POLICY IF EXISTS "household_invites_access" ON household_invites;
+CREATE POLICY "household_invites_access" ON household_invites
+  FOR ALL USING (
+    auth.uid() = invited_by
+    OR household_id IN (SELECT household_id FROM users WHERE id = auth.uid())
+  );
+
+-- Activity: household members can read and append
+DROP POLICY IF EXISTS "household_activity_access" ON household_activity;
+CREATE POLICY "household_activity_access" ON household_activity
+  FOR ALL USING (
+    household_id IN (SELECT household_id FROM users WHERE id = auth.uid())
+  );
+
+-- ============================================================
+-- Realtime: enable Postgres change streams for live household sync
+-- (safe to re-run; ignores already-added tables)
+-- ============================================================
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE grocery_items;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE shopping_list_items;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE recipes;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE household_activity;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;

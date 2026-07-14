@@ -45,7 +45,9 @@ module.exports = {
     'react-hooks/exhaustive-deps': 'warn',
 
     // React Native rules
-    'react-native/no-unused-styles': 'error',
+    // Disabled: false-positives with the themed style factory pattern
+    // (createStyles(theme) + useThemedStyles) used across the app.
+    'react-native/no-unused-styles': 'off',
     'react-native/split-platform-components': 'error',
     'react-native/no-inline-styles': 'warn',
     'react-native/no-color-literals': 'warn',

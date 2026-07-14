@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
 import { API_CONFIG } from '../config/api';
 
 // You'll need to get a Google Cloud Vision API key
@@ -52,7 +53,7 @@ class OCRService {
       }
       return '';
     } catch (error) {
-      console.error('Google Vision API error:', error);
+      logger.error('Google Vision API error:', error);
       throw new Error('Failed to extract text from image');
     }
   }
@@ -91,7 +92,7 @@ class OCRService {
       // 2. Call Google Vision API
       // 3. Return extracted text
 
-      if (GOOGLE_CLOUD_VISION_API_KEY === 'YOUR_GOOGLE_CLOUD_VISION_API_KEY') {
+      if (!GOOGLE_CLOUD_VISION_API_KEY) {
         return await this.mockOCRProcessing();
       } else {
         // Convert image to base64 and call real API
@@ -99,7 +100,7 @@ class OCRService {
         return await this.callGoogleVisionAPI(base64);
       }
     } catch (error) {
-      console.error('OCR processing error:', error);
+      logger.error('OCR processing error:', error);
       throw error;
     }
   }
@@ -108,6 +109,26 @@ class OCRService {
     // This would convert the image URI to base64
     // For now, return empty string
     return '';
+  }
+
+  // High-level entry point used by the Scanner receipt flow.
+  //
+  // Pass the image's base64 (expo-image-picker returns it directly with
+  // `base64: true`). Uses Google Vision when a key + image are available,
+  // otherwise falls back to mock parsing so the flow works with no key.
+  async scanReceipt(base64?: string): Promise<ReceiptItem[]> {
+    let text: string;
+    if (GOOGLE_CLOUD_VISION_API_KEY && base64) {
+      try {
+        text = await this.callGoogleVisionAPI(base64);
+      } catch (error) {
+        logger.warn('Vision OCR failed, using mock parsing:', error);
+        text = await this.mockOCRProcessing();
+      }
+    } else {
+      text = await this.mockOCRProcessing();
+    }
+    return this.parseReceiptText(text);
   }
 
   parseReceiptText(text: string): ReceiptItem[] {

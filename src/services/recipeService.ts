@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
 import { Recipe } from '../types';
 import { generateId } from '../utils/helpers';
 
@@ -75,14 +76,14 @@ class RecipeService {
       });
       return response.data;
     } catch (error) {
-      console.error('Spoonacular API error:', error);
+      logger.error('Spoonacular API error:', error);
       throw error;
     }
   }
 
   async searchRecipesByIngredients(ingredients: string[]): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         // Return mock data if API key not set
         return this.mockRecipeSearch(ingredients);
       }
@@ -101,7 +102,7 @@ class RecipeService {
             const details = await this.getRecipeDetails(recipe.id);
             return details || this.convertSpoonacularToRecipe(recipe);
           } catch (error) {
-            console.error(
+            logger.error(
               `Error getting details for recipe ${recipe.id}:`,
               error
             );
@@ -112,21 +113,21 @@ class RecipeService {
 
       return detailedRecipes.filter(Boolean);
     } catch (error) {
-      console.error('Recipe search error:', error);
+      logger.error('Recipe search error:', error);
       return this.mockRecipeSearch(ingredients);
     }
   }
 
   async getRecipeDetails(recipeId: number): Promise<Recipe | null> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         return null;
       }
 
       const data = await this.callSpoonacularAPI(`/${recipeId}/information`);
       return this.convertSpoonacularToRecipe(data);
     } catch (error) {
-      console.error('Recipe details error:', error);
+      logger.error('Recipe details error:', error);
       return null;
     }
   }
@@ -377,7 +378,7 @@ class RecipeService {
 
   async getRandomRecipes(count: number = 5): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         return this.mockRecipeSearch(['pasta', 'chicken']);
       }
 
@@ -386,7 +387,7 @@ class RecipeService {
         this.convertSpoonacularToRecipe(recipe)
       );
     } catch (error) {
-      console.error('Random recipes error:', error);
+      logger.error('Random recipes error:', error);
       return this.mockRecipeSearch(['pasta', 'chicken']);
     }
   }
@@ -396,11 +397,11 @@ class RecipeService {
     availableIngredients: string[]
   ): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         return this.mockRecipeSearch(availableIngredients);
       }
 
-      console.log('Searching recipes with ingredients:', availableIngredients);
+      logger.debug('Searching recipes with ingredients:', availableIngredients);
 
       // Use Spoonacular's findByIngredients endpoint for better matching
       const ingredientsString = availableIngredients.join(',');
@@ -411,7 +412,7 @@ class RecipeService {
         ignorePantry: true, // Ignore common pantry items like salt, oil, etc.
       });
 
-      console.log('Found recipes:', data.length);
+      logger.debug('Found recipes:', data.length);
 
       // Get detailed recipe information and check ingredient availability
       const detailedRecipes = await Promise.all(
@@ -428,7 +429,7 @@ class RecipeService {
               details.canCookNow = missing.length === 0;
               details.missingIngredients = missing;
 
-              console.log(
+              logger.debug(
                 `Recipe: ${details.title} - Available: ${available.length}, Missing: ${missing.length}`
               );
 
@@ -436,7 +437,7 @@ class RecipeService {
             }
             return null;
           } catch (error) {
-            console.error(
+            logger.error(
               `Error getting details for recipe ${recipe.id}:`,
               error
             );
@@ -446,11 +447,11 @@ class RecipeService {
       );
 
       const validRecipes = detailedRecipes.filter(Boolean);
-      console.log('Valid recipes found:', validRecipes.length);
+      logger.debug('Valid recipes found:', validRecipes.length);
 
       return validRecipes;
     } catch (error) {
-      console.error('Available ingredients search error:', error);
+      logger.error('Available ingredients search error:', error);
       return this.mockRecipeSearch(availableIngredients);
     }
   }
@@ -501,7 +502,7 @@ class RecipeService {
     maxReadyTime?: number;
   }): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
+      if (!SPOONACULAR_API_KEY) {
         return this.mockRecipeSearch(['pasta', 'chicken']);
       }
 
@@ -529,7 +530,7 @@ class RecipeService {
         this.convertSpoonacularToRecipe(recipe)
       );
     } catch (error) {
-      console.error('Recipe recommendations error:', error);
+      logger.error('Recipe recommendations error:', error);
       return this.mockRecipeSearch(['pasta', 'chicken']);
     }
   }
@@ -602,8 +603,8 @@ class RecipeService {
     };
   }): Promise<Recipe[]> {
     try {
-      if (SPOONACULAR_API_KEY === 'YOUR_SPOONACULAR_API_KEY') {
-        console.log('Spoonacular API key not configured, using mock data');
+      if (!SPOONACULAR_API_KEY) {
+        logger.debug('Spoonacular API key not configured, using mock data');
         return this.mockRecipeSearchByPreferences(preferences);
       }
 
@@ -641,19 +642,19 @@ class RecipeService {
         }
       }
 
-      console.log('🔍 Spoonacular API: Searching with params:', params);
+      logger.debug('🔍 Spoonacular API: Searching with params:', params);
 
       // Search for recipes
       const data = await this.callSpoonacularAPI('/complexSearch', params);
 
       if (!data.results || data.results.length === 0) {
-        console.log(
+        logger.debug(
           '🔍 Spoonacular API: No recipes found with current filters'
         );
         return [];
       }
 
-      console.log(`🔍 Spoonacular API: Found ${data.results.length} recipes`);
+      logger.debug(`🔍 Spoonacular API: Found ${data.results.length} recipes`);
 
       // Get detailed information for each recipe
       const detailedRecipes = await Promise.all(
@@ -662,7 +663,7 @@ class RecipeService {
             const details = await this.getRecipeDetails(recipe.id);
             return details;
           } catch (error) {
-            console.error(
+            logger.error(
               `Error getting details for recipe ${recipe.id}:`,
               error
             );
@@ -676,13 +677,13 @@ class RecipeService {
         .filter((recipe): recipe is Recipe => recipe !== null)
         .filter(recipe => this.matchesPreferences(recipe, preferences));
 
-      console.log(
+      logger.debug(
         `🔍 Spoonacular API: ${validRecipes.length} recipes match preferences`
       );
 
       return validRecipes;
     } catch (error) {
-      console.error('Spoonacular API search error:', error);
+      logger.error('Spoonacular API search error:', error);
       return this.mockRecipeSearchByPreferences(preferences);
     }
   }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,124 +7,244 @@ import {
   TextInput,
   FlatList,
   Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useMultiUserStore } from '../../store/useMultiUserStore';
 import PantryHeader from '../../components/PantryHeader';
 import PantryCard from '../../components/PantryCard';
 import PantryButton from '../../components/PantryButton';
 import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-} from '../../utils/designSystem';
+  FadeSlideIn,
+  EmptyState,
+  ProgressBar,
+  Confetti,
+  useToast,
+} from '../../components/ui';
+import { Theme } from '../../theme/themes';
+import { useThemedStyles, useTheme } from '../../theme/ThemeContext';
+import { typography, spacing, borderRadius } from '../../utils/designSystem';
+import { categorizeItem } from '../../utils/helpers';
+import { haptics } from '../../utils/haptics';
+import { shoppingListSyncService } from '../../services/shoppingListSyncService';
+import { ShoppingListItem } from '../../types';
 
 export default function ShoppingListScreen() {
+  const styles = useThemedStyles(createStyles);
+  const { theme } = useTheme();
+  const { showToast } = useToast();
   const {
     shoppingList,
+    pantry,
+    recipes,
     addShoppingListItem,
     updateShoppingListItem,
     removeShoppingListItem,
+    toggleShoppingItemComplete,
+    addGroceryItem,
   } = useMultiUserStore();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newItemName, setNewItemName] = useState('');
-  const [newItemQuantity, setNewItemQuantity] = useState('1');
-  const [newItemUnit, setNewItemUnit] = useState('piece');
 
-  const handleAddItem = () => {
-    if (!newItemName.trim()) {
-      Alert.alert('Error', 'Please enter an item name');
-      return;
+  const [quickAddText, setQuickAddText] = useState('');
+  const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editQuantity, setEditQuantity] = useState('1');
+  const [editUnit, setEditUnit] = useState('pcs');
+  const [celebrate, setCelebrate] = useState(false);
+  const wasCompleteRef = useRef(false);
+
+  const { activeList, completedCount, totalCount, progress } = useMemo(() => {
+    const sorted = shoppingList.slice().sort((a, b) => {
+      if (a.isCompleted !== b.isCompleted) return a.isCompleted ? 1 : -1;
+      return (a.category ?? '').localeCompare(b.category ?? '');
+    });
+    const completed = shoppingList.filter(item => item.isCompleted).length;
+    return {
+      activeList: sorted,
+      completedCount: completed,
+      totalCount: shoppingList.length,
+      progress: shoppingList.length > 0 ? completed / shoppingList.length : 0,
+    };
+  }, [shoppingList]);
+
+  // Celebrate when the list transitions to fully complete.
+  const isComplete = totalCount > 0 && completedCount === totalCount;
+  React.useEffect(() => {
+    if (isComplete && !wasCompleteRef.current) {
+      wasCompleteRef.current = true;
+      setCelebrate(true);
+      haptics.success();
+    } else if (!isComplete) {
+      wasCompleteRef.current = false;
     }
+  }, [isComplete]);
 
-    addShoppingListItem({
-      name: newItemName.trim(),
-      quantity: parseInt(newItemQuantity) || 1,
-      unit: newItemUnit,
-      category: 'Other',
+  const handleQuickAdd = async () => {
+    const name = quickAddText.trim();
+    if (!name) return;
+    setQuickAddText('');
+    await addShoppingListItem({
+      name,
+      quantity: 1,
+      unit: 'pcs',
+      category: categorizeItem(name),
       notes: '',
-      price: 0,
       isShared: true,
     });
-
-    setNewItemName('');
-    setNewItemQuantity('1');
-    setNewItemUnit('piece');
-    setShowAddModal(false);
+    haptics.light();
   };
 
-  const handleToggleComplete = (itemId: string) => {
-    const item = shoppingList.find(item => item.id === itemId);
-    if (item) {
-      updateShoppingListItem(itemId, { isCompleted: !item.isCompleted });
-    }
+  const handleDeleteItem = (item: ShoppingListItem) => {
+    removeShoppingListItem(item.id);
+    showToast(`Removed ${item.name}`, {
+      type: 'info',
+      actionLabel: 'Undo',
+      onAction: () =>
+        addShoppingListItem({
+          name: item.name,
+          quantity: item.quantity,
+          unit: item.unit,
+          category: item.category,
+          notes: item.notes ?? '',
+          isShared: item.isShared,
+        }),
+    });
   };
 
-  const handleDeleteItem = (itemId: string) => {
-    Alert.alert('Delete Item', 'Are you sure you want to delete this item?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => removeShoppingListItem(itemId),
-      },
-    ]);
+  const openEdit = (item: ShoppingListItem) => {
+    setEditingItem(item);
+    setEditName(item.name);
+    setEditQuantity(String(item.quantity));
+    setEditUnit(item.unit);
   };
 
-  const handleClearCompleted = () => {
-    const completedItems = shoppingList.filter(item => item.isCompleted);
-    if (completedItems.length === 0) {
-      Alert.alert(
-        'No Completed Items',
-        'There are no completed items to clear.'
-      );
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    const name = editName.trim();
+    if (!name) {
+      showToast('Please enter an item name', { type: 'warning' });
       return;
     }
+    await updateShoppingListItem(editingItem.id, {
+      name,
+      quantity: parseFloat(editQuantity) || 1,
+      unit: editUnit.trim() || 'pcs',
+    });
+    setEditingItem(null);
+    showToast('Item updated', { type: 'success' });
+  };
 
+  const handleSyncFromRecipes = () => {
+    const missing = shoppingListSyncService.syncMissingIngredients(
+      recipes,
+      pantry,
+      shoppingList
+    );
+    if (missing.length === 0) {
+      showToast('No missing ingredients — you have everything!', {
+        type: 'success',
+      });
+      return;
+    }
     Alert.alert(
-      'Clear Completed Items',
-      `Remove ${completedItems.length} completed item${completedItems.length !== 1 ? 's' : ''}?`,
+      'Sync from recipes',
+      `Add ${missing.length} missing ingredient${missing.length === 1 ? '' : 's'} from your saved recipes?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Clear',
-          style: 'destructive',
-          onPress: () => {
-            completedItems.forEach(item => removeShoppingListItem(item.id));
+          text: 'Add All',
+          onPress: async () => {
+            for (const ingredient of missing) {
+              await addShoppingListItem({
+                name: ingredient.name,
+                quantity: ingredient.quantity,
+                unit: ingredient.unit,
+                category: ingredient.category,
+                notes: ingredient.sourceRecipe
+                  ? `For: ${ingredient.sourceRecipe}`
+                  : '',
+                isShared: true,
+              });
+            }
+            showToast(`Added ${missing.length} ingredients`, {
+              type: 'success',
+            });
           },
         },
       ]
     );
   };
 
-  const handleSyncWithPantry = () => {
+  const handleMoveCompletedToPantry = () => {
+    const completed = shoppingList.filter(item => item.isCompleted);
+    if (completed.length === 0) {
+      showToast('Nothing checked off yet', { type: 'info' });
+      return;
+    }
     Alert.alert(
-      'Sync with Pantry',
-      'Sync missing ingredients from recipes to shopping list'
+      'Finish shopping trip',
+      `Move ${completed.length} purchased item${completed.length === 1 ? '' : 's'} into your pantry?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Just clear them',
+          style: 'destructive',
+          onPress: () => {
+            completed.forEach(item => removeShoppingListItem(item.id));
+            showToast('Cleared completed items', { type: 'info' });
+          },
+        },
+        {
+          text: 'Move to Pantry',
+          onPress: async () => {
+            for (const item of completed) {
+              await addGroceryItem(
+                {
+                  name: item.name,
+                  quantity: item.quantity,
+                  unit: item.unit,
+                  category: item.category ?? categorizeItem(item.name),
+                  expirationDate: '',
+                  price: item.price,
+                  notes: item.notes,
+                  isShared: item.isShared,
+                },
+                item.isShared
+              );
+              removeShoppingListItem(item.id);
+            }
+            haptics.success();
+            showToast(
+              `Moved ${completed.length} item${completed.length === 1 ? '' : 's'} to pantry 🎉`,
+              { type: 'success' }
+            );
+          },
+        },
+      ]
     );
   };
 
-  // Filter items based on search
-  const filteredItems = shoppingList.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Calculate progress
-  const totalItems = shoppingList.length;
-  const completedItems = shoppingList.filter(item => item.isCompleted).length;
-  const progressPercentage =
-    totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
-
-  const renderItem = ({ item }: { item: any }) => (
-    <PantryCard variant='default' padding='md'>
-      <View style={styles.itemContainer}>
-        <TouchableOpacity
-          style={styles.itemContent}
-          onPress={() => handleToggleComplete(item.id)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.checkboxContainer}>
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: ShoppingListItem;
+    index: number;
+  }) => (
+    <FadeSlideIn delay={Math.min(index, 8) * 40}>
+      <PantryCard variant='default' padding='md'>
+        <View style={styles.itemContainer}>
+          <TouchableOpacity
+            style={styles.itemContent}
+            onPress={() => {
+              haptics.selection();
+              toggleShoppingItemComplete(item.id);
+            }}
+            activeOpacity={0.7}
+            accessibilityRole='checkbox'
+            accessibilityState={{ checked: item.isCompleted }}
+            accessibilityLabel={item.name}
+          >
             <View
               style={[
                 styles.checkbox,
@@ -133,390 +253,354 @@ export default function ShoppingListScreen() {
             >
               {item.isCompleted && <Text style={styles.checkmark}>✓</Text>}
             </View>
-          </View>
 
-          <View style={styles.itemInfo}>
-            <Text
-              style={[
-                styles.itemName,
-                item.isCompleted && styles.itemNameCompleted,
-              ]}
+            <View style={styles.itemInfo}>
+              <Text
+                style={[
+                  styles.itemName,
+                  item.isCompleted && styles.itemNameCompleted,
+                ]}
+                numberOfLines={1}
+              >
+                {item.name}
+              </Text>
+              <Text style={styles.itemDetails} numberOfLines={1}>
+                {item.quantity} {item.unit}
+                {item.category ? ` · ${item.category}` : ''}
+                {item.notes ? ` · ${item.notes}` : ''}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.itemActions}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => openEdit(item)}
+              accessibilityLabel={`Edit ${item.name}`}
             >
-              {item.name}
-            </Text>
-            <Text style={styles.itemDetails}>
-              {item.quantity} {item.unit}
-              {item.notes && ` • ${item.notes}`}
-            </Text>
+              <Text style={styles.iconButtonText}>✏️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => handleDeleteItem(item)}
+              accessibilityLabel={`Delete ${item.name}`}
+            >
+              <Text style={styles.iconButtonText}>🗑</Text>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-
-        <View style={styles.itemActions}>
-          <PantryButton
-            title='Edit'
-            onPress={() => Alert.alert('Edit Item', `Edit ${item.name}`)}
-            variant='outline'
-            size='sm'
-          />
-          <PantryButton
-            title='Delete'
-            onPress={() => handleDeleteItem(item.id)}
-            variant='error'
-            size='sm'
-          />
         </View>
-      </View>
-    </PantryCard>
+      </PantryCard>
+    </FadeSlideIn>
   );
 
   return (
     <View style={styles.container}>
       <PantryHeader
         title='Shopping List'
-        subtitle='Track your grocery shopping'
+        subtitle={
+          totalCount === 0
+            ? 'What do you need?'
+            : isComplete
+              ? 'All done — great job! 🎉'
+              : `${totalCount - completedCount} item${totalCount - completedCount === 1 ? '' : 's'} to go`
+        }
         gradient='citrus'
-        rightAction={{
-          icon: '➕',
-          onPress: () => setShowAddModal(true),
-        }}
       />
 
       <View style={styles.content}>
-        {/* Progress Section */}
-        <PantryCard variant='elevated' padding='md' margin='none'>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressText}>Shopping Progress</Text>
-            <Text style={styles.progressPercentage}>
-              {completedItems}/{totalItems} ({Math.round(progressPercentage)}%)
-            </Text>
-          </View>
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${progressPercentage}%` },
-                ]}
-              />
+        {/* Progress */}
+        {totalCount > 0 && (
+          <View style={styles.progressSection}>
+            <View style={styles.progressHeader}>
+              <Text style={styles.progressText}>
+                {completedCount}/{totalCount} picked up
+              </Text>
+              <Text style={styles.progressPercentage}>
+                {Math.round(progress * 100)}%
+              </Text>
             </View>
+            <ProgressBar
+              progress={progress}
+              height={10}
+              gradient={[theme.palette.citrus[400], theme.palette.sage[500]]}
+            />
           </View>
-        </PantryCard>
+        )}
 
-        {/* Search Section */}
-        <PantryCard variant='fresh' padding='md'>
+        {/* Quick add */}
+        <View style={styles.quickAddRow}>
           <TextInput
-            style={styles.searchInput}
-            placeholder='Search shopping list items...'
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor={colors.neutral[400]}
+            style={styles.quickAddInput}
+            placeholder='Add an item... e.g. Milk'
+            placeholderTextColor={theme.colors.textMuted}
+            value={quickAddText}
+            onChangeText={setQuickAddText}
+            onSubmitEditing={handleQuickAdd}
+            returnKeyType='done'
           />
-        </PantryCard>
-
-        {/* Quick Actions */}
-        <PantryCard variant='warm' padding='md'>
-          <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            <PantryButton
-              title='Sync with Pantry'
-              onPress={handleSyncWithPantry}
-              variant='outline'
-              size='sm'
-              icon='🔄'
-              fullWidth
-            />
-            <PantryButton
-              title='Clear Completed'
-              onPress={handleClearCompleted}
-              variant='warning'
-              size='sm'
-              icon='🗑️'
-              fullWidth
-            />
-          </View>
-        </PantryCard>
-
-        {/* Shopping List */}
-        <View style={styles.listContainer}>
-          {filteredItems.length > 0 ? (
-            <FlatList
-              data={filteredItems}
-              renderItem={renderItem}
-              keyExtractor={item => item.id}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.listContent}
-            />
-          ) : (
-            <PantryCard variant='outlined' padding='xl'>
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateIcon}>🛒</Text>
-                <Text style={styles.emptyStateText}>No shopping items</Text>
-                <Text style={styles.emptyStateSubtext}>
-                  {searchQuery
-                    ? 'No items match your search'
-                    : 'Add items to your shopping list to get started!'}
-                </Text>
-                <PantryButton
-                  title='Add First Item'
-                  onPress={() => setShowAddModal(true)}
-                  variant='primary'
-                  size='md'
-                  fullWidth
-                />
-              </View>
-            </PantryCard>
-          )}
+          <PantryButton title='Add' onPress={handleQuickAdd} size='md' />
         </View>
+
+        {/* Actions */}
+        <View style={styles.actionsRow}>
+          <PantryButton
+            title='Sync from recipes'
+            onPress={handleSyncFromRecipes}
+            variant='outline'
+            size='sm'
+            icon='🔄'
+            style={styles.actionButton}
+          />
+          <PantryButton
+            title='Finish trip'
+            onPress={handleMoveCompletedToPantry}
+            variant='outline'
+            size='sm'
+            icon='🏁'
+            style={styles.actionButton}
+          />
+        </View>
+
+        {/* List */}
+        {activeList.length > 0 ? (
+          <FlatList
+            data={activeList}
+            renderItem={renderItem}
+            keyExtractor={item => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+          />
+        ) : (
+          <EmptyState
+            emoji='🛒'
+            title='Your list is empty'
+            message='Add items above, or sync missing ingredients from your saved recipes.'
+          />
+        )}
       </View>
 
-      {/* Add Item Modal */}
-      {showAddModal && (
-        <View style={styles.modalOverlay}>
+      {/* Edit modal */}
+      <Modal
+        visible={editingItem !== null}
+        transparent
+        animationType='fade'
+        onRequestClose={() => setEditingItem(null)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
           <View style={styles.modalContent}>
-            <PantryCard variant='elevated' padding='lg'>
-              <Text style={styles.modalTitle}>Add Shopping Item</Text>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Item Name</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder='e.g., Milk, Bread, Apples'
-                  value={newItemName}
-                  onChangeText={setNewItemName}
-                  placeholderTextColor={colors.neutral[400]}
-                />
-              </View>
-
+            <PantryCard variant='elevated' padding='lg' margin='none'>
+              <Text style={styles.modalTitle}>Edit Item</Text>
+              <Text style={styles.inputLabel}>Name</Text>
+              <TextInput
+                style={styles.input}
+                value={editName}
+                onChangeText={setEditName}
+                placeholderTextColor={theme.colors.textMuted}
+              />
               <View style={styles.inputRow}>
-                <View style={styles.inputGroup}>
+                <View style={styles.inputHalf}>
                   <Text style={styles.inputLabel}>Quantity</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder='1'
-                    value={newItemQuantity}
-                    onChangeText={setNewItemQuantity}
-                    keyboardType='numeric'
-                    placeholderTextColor={colors.neutral[400]}
+                    value={editQuantity}
+                    onChangeText={setEditQuantity}
+                    keyboardType='decimal-pad'
                   />
                 </View>
-
-                <View style={styles.inputGroup}>
+                <View style={styles.inputHalf}>
                   <Text style={styles.inputLabel}>Unit</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder='piece'
-                    value={newItemUnit}
-                    onChangeText={setNewItemUnit}
-                    placeholderTextColor={colors.neutral[400]}
+                    value={editUnit}
+                    onChangeText={setEditUnit}
                   />
                 </View>
               </View>
-
               <View style={styles.modalActions}>
                 <PantryButton
                   title='Cancel'
-                  onPress={() => setShowAddModal(false)}
+                  onPress={() => setEditingItem(null)}
                   variant='outline'
                   size='md'
+                  style={styles.actionButton}
                 />
                 <PantryButton
-                  title='Add Item'
-                  onPress={handleAddItem}
+                  title='Save'
+                  onPress={handleSaveEdit}
                   variant='primary'
                   size='md'
+                  style={styles.actionButton}
                 />
               </View>
             </PantryCard>
           </View>
-        </View>
-      )}
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {celebrate && <Confetti onComplete={() => setCelebrate(false)} />}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  actionsGrid: {
-    gap: spacing.sm,
-  },
-  checkbox: {
-    alignItems: 'center',
-    borderColor: colors.neutral[300],
-    borderRadius: 12,
-    borderWidth: 2,
-    height: 24,
-    justifyContent: 'center',
-    width: 24,
-  },
-  checkboxCompleted: {
-    backgroundColor: colors.success,
-    borderColor: colors.success,
-  },
-  checkboxContainer: {
-    marginRight: spacing.md,
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  container: {
-    backgroundColor: colors.neutral[50],
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-  },
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: spacing.md,
-  },
-  emptyStateSubtext: {
-    ...typography.bodySmall,
-    color: colors.neutral[500],
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  emptyStateText: {
-    ...typography.h4,
-    color: colors.neutral[600],
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
-    color: colors.neutral[900],
-    fontSize: 16,
-    height: 44,
-    paddingHorizontal: spacing.md,
-  },
-  inputGroup: {
-    marginBottom: spacing.md,
-  },
-  inputLabel: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '500',
-    marginBottom: spacing.xs,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  itemActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  itemContainer: {
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  itemContent: {
-    alignItems: 'center',
-    flex: 1,
-    flexDirection: 'row',
-  },
-  itemDetails: {
-    ...typography.bodySmall,
-    color: colors.neutral[600],
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    ...typography.body,
-    color: colors.neutral[800],
-    fontWeight: '500',
-    marginBottom: spacing.xs,
-  },
-  itemNameCompleted: {
-    color: colors.neutral[500],
-    textDecorationLine: 'line-through',
-  },
-  listContainer: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  listContent: {
-    paddingBottom: spacing.xl,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-  },
-  modalContent: {
-    maxWidth: 400,
-    width: '90%',
-  },
-  modalOverlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    bottom: 0,
-    justifyContent: 'center',
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    zIndex: 1000,
-  },
-  modalTitle: {
-    ...typography.h3,
-    color: colors.neutral[800],
-    marginBottom: spacing.lg,
-    textAlign: 'center',
-  },
-  progressBar: {
-    backgroundColor: colors.neutral[200],
-    borderRadius: 6,
-    height: 12,
-    overflow: 'hidden',
-  },
-  progressBarContainer: {
-    marginTop: spacing.xs,
-  },
-  progressFill: {
-    backgroundColor: colors.success,
-    borderRadius: 6,
-    height: '100%',
-  },
-  progressHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  progressPercentage: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '600',
-  },
-  progressText: {
-    ...typography.body,
-    color: colors.neutral[700],
-    fontWeight: '500',
-  },
-  searchInput: {
-    backgroundColor: colors.neutral[100],
-    borderColor: colors.neutral[200],
-    borderRadius: borderRadius.input,
-    borderWidth: 1,
-    color: colors.neutral[900],
-    fontSize: 16,
-    height: 44,
-    paddingHorizontal: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.neutral[800],
-    marginBottom: spacing.md,
-  },
-});
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    actionButton: {
+      flex: 1,
+    },
+    actionsRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    checkbox: {
+      alignItems: 'center',
+      borderColor: theme.colors.borderStrong,
+      borderRadius: 13,
+      borderWidth: 2,
+      height: 26,
+      justifyContent: 'center',
+      marginRight: spacing.md,
+      width: 26,
+    },
+    checkboxCompleted: {
+      backgroundColor: theme.colors.success,
+      borderColor: theme.colors.success,
+    },
+    checkmark: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    container: {
+      backgroundColor: theme.colors.background,
+      flex: 1,
+    },
+    content: {
+      flex: 1,
+      padding: spacing.md,
+    },
+    iconButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 36,
+      paddingHorizontal: spacing.xs + 2,
+    },
+    iconButtonText: {
+      fontSize: 16,
+    },
+    input: {
+      backgroundColor: theme.colors.inputBackground,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.input,
+      borderWidth: 1,
+      color: theme.colors.text,
+      fontSize: 16,
+      height: 44,
+      marginBottom: spacing.md,
+      paddingHorizontal: spacing.md,
+    },
+    inputHalf: {
+      flex: 1,
+    },
+    inputLabel: {
+      ...typography.label,
+      color: theme.colors.textSecondary,
+      marginBottom: spacing.xs,
+    },
+    inputRow: {
+      flexDirection: 'row',
+      gap: spacing.md,
+    },
+    itemActions: {
+      flexDirection: 'row',
+    },
+    itemContainer: {
+      alignItems: 'center',
+      flexDirection: 'row',
+    },
+    itemContent: {
+      alignItems: 'center',
+      flex: 1,
+      flexDirection: 'row',
+    },
+    itemDetails: {
+      ...typography.caption,
+      color: theme.colors.textMuted,
+    },
+    itemInfo: {
+      flex: 1,
+      marginRight: spacing.sm,
+    },
+    itemName: {
+      ...typography.body,
+      color: theme.colors.text,
+      fontWeight: '500',
+    },
+    itemNameCompleted: {
+      color: theme.colors.textMuted,
+      textDecorationLine: 'line-through',
+    },
+    listContent: {
+      paddingBottom: spacing.xxl,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    modalContent: {
+      maxWidth: 400,
+      width: '90%',
+    },
+    modalOverlay: {
+      alignItems: 'center',
+      backgroundColor: theme.colors.overlay,
+      flex: 1,
+      justifyContent: 'center',
+    },
+    modalTitle: {
+      ...typography.h3,
+      color: theme.colors.text,
+      marginBottom: spacing.md,
+      textAlign: 'center',
+    },
+    progressHeader: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xs,
+    },
+    progressPercentage: {
+      ...typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '700',
+    },
+    progressSection: {
+      marginBottom: spacing.md,
+    },
+    progressText: {
+      ...typography.bodySmall,
+      color: theme.colors.textSecondary,
+      fontWeight: '500',
+    },
+    quickAddInput: {
+      backgroundColor: theme.colors.inputBackground,
+      borderColor: theme.colors.border,
+      borderRadius: borderRadius.input,
+      borderWidth: 1,
+      color: theme.colors.text,
+      flex: 1,
+      fontSize: 16,
+      height: 44,
+      paddingHorizontal: spacing.md,
+    },
+    quickAddRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+  });
