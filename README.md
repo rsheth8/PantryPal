@@ -1,5 +1,10 @@
 # PantryPal
 
+<p align="center">
+  <img src="docs/brand/logo.png" width="168" alt="PantryPal">
+</p>
+
+
 Shared kitchen app: pantry inventory, expiration warnings, recipes from what’s on hand, meal plans, and a household shopping list.
 
 | | |
@@ -177,3 +182,10 @@ npm run clean              # rm -rf node_modules && npm install
 - **Client-side ID generation**: `supabaseService` generates UUIDs and household join codes in JavaScript before inserting rows, rather than relying on database defaults.
 - **Local notifications only**: `notificationService` schedules on-device notifications (expiration, low stock, household activity) via `expo-notifications`; there's no server-side push infrastructure.
 - **Persisted client state**: the entire app state (pantry, shopping list, recipes, user/household) lives in a single Zustand store persisted to `AsyncStorage`, with Supabase as the source of truth that's re-synced on mutation and on `refreshPantry()`.
+
+## Contributing
+
+PRs and issues welcome. How to run tests, env vars, and the expected layout: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Don't commit `.env`, API keys, or personal recordings.
+
