@@ -1,6 +1,13 @@
 # PantryPal
 
-A collaborative mobile app for tracking pantry inventory, planning meals, and generating shopping lists across a household.
+Shared kitchen app: pantry inventory, expiration warnings, recipes from what’s on hand, meal plans, and a household shopping list.
+
+| | |
+| --- | --- |
+| **Author** | [Rahil Sheth](https://github.com/rsheth8) |
+| **Repo** | [rsheth8/PantryPal](https://github.com/rsheth8/PantryPal) |
+| **Stack** | React Native, Expo, Supabase (Postgres + Auth), Zustand, Spoonacular (optional), Cloud Vision OCR (optional) |
+| **Status** | Portfolio mobile app. Dev mode can skip real auth. Recipe/OCR APIs have mock fallbacks without keys. |
 
 ## What this is
 
