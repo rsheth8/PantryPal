@@ -1,18 +1,25 @@
-# PantryPal
-
 <p align="center">
-  <img src="docs/brand/logo.png" width="168" alt="PantryPal">
+  <img src="docs/brand/logo.png" width="128" alt="PantryPal">
 </p>
 
+<h1 align="center">PantryPal</h1>
 
-Shared kitchen app: pantry inventory, expiration warnings, recipes from what’s on hand, meal plans, and a household shopping list.
+<p align="center">
+  One kitchen. Shared pantry, recipes from what’s left, a list that actually updates.
+</p>
 
-| | |
-| --- | --- |
-| **Author** | [Rahil Sheth](https://github.com/rsheth8) |
-| **Repo** | [rsheth8/PantryPal](https://github.com/rsheth8/PantryPal) |
-| **Stack** | React Native, Expo, Supabase (Postgres + Auth), Zustand, Spoonacular (optional), Cloud Vision OCR (optional) |
-| **Status** | Portfolio mobile app. Dev mode can skip real auth. Recipe/OCR APIs have mock fallbacks without keys. |
+<p align="center">
+  <a href="https://github.com/rsheth8/PantryPal">Source</a>&nbsp;·&nbsp;<a href="CONTRIBUTING.md">Run locally</a>
+</p>
+
+<p align="center">
+  <img alt="Expo" src="https://img.shields.io/badge/Expo-React%20Native-000020?style=flat-square">
+  <img alt="Supabase" src="https://img.shields.io/badge/Supabase-Postgres-3FCF8E?style=flat-square&logo=supabase&logoColor=white">
+</p>
+
+<p align="center"><sub>Spoonacular and Vision are optional — mocks kick in without keys.</sub></p>
+
+---
 
 ## What this is
 
